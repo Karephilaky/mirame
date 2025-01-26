@@ -2,8 +2,9 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 interface Reservation {
   id: string;
-  name: string;
+  clientId: string;
   date: string;
+  service: string;
 }
 
 interface ReservationState {
@@ -15,7 +16,7 @@ const initialState: ReservationState = {
 };
 
 const reservationSlice = createSlice({
-  name: 'reservation',
+  name: 'reservations',
   initialState,
   reducers: {
     addReservation: (state, action: PayloadAction<Reservation>) => {

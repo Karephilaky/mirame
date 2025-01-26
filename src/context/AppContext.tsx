@@ -1,26 +1,22 @@
 import React, { createContext, useState, ReactNode } from 'react';
 
-interface AppContextProps {
-  theme: string;
-  toggleTheme: () => void;
+interface AuthContextType {
+  user: any;
+  login: (userData: any) => void;
+  logout: () => void;
 }
 
-export const AppContext = createContext<AppContextProps | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-interface AppProviderProps {
-  children: ReactNode;
-}
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState(null);
 
-export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
-
-  const toggleTheme = () => {
-    setTheme((prevTheme) => (prevTheme === 'light' ? 'dark' : 'light'));
-  };
+  const login = (userData: any) => setUser(userData);
+  const logout = () => setUser(null);
 
   return (
-    <AppContext.Provider value={{ theme, toggleTheme }}>
+    <AuthContext.Provider value={{ user, login, logout }}>
       {children}
-    </AppContext.Provider>
+    </AuthContext.Provider>
   );
 };

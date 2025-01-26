@@ -1,17 +1,37 @@
 import React from 'react';
-import { View, Text, Button, StyleSheet } from 'react-native';
-import { StackNavigationProp } from '@react-navigation/stack';
+import {
+  View,
+  StyleSheet,
+  FlatList,
+  RefreshControl,
+} from 'react-native';
+import { COLORS } from '../../styles/common';
+import { useServices } from '../../hooks/useServices';
+import ServiceCard from '../../components/ServiceCard';
+import LoadingScreen from '../../components/LoadingScreen';
+import ErrorScreen from '../../components/ErrorScreen';
 
-interface Props {
-  navigation: StackNavigationProp<any, any>;
-}
+const HomeScreen = () => {
+  const { services, loading, error, refetchServices } = useServices();
 
-const HomeScreen: React.FC<Props> = ({ navigation }) => {
+  if (loading) return <LoadingScreen />;
+  if (error) return <ErrorScreen error={error} onRetry={refetchServices} />;
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Home Screen</Text>
-      <Button title="Go to Register" onPress={() => navigation.navigate('Register')} />
-      <Button title="Go to Manage Employees" onPress={() => navigation.navigate('ManageEmployees')} />
+      <FlatList
+        data={services}
+        renderItem={({ item }) => <ServiceCard service={item} />}
+        keyExtractor={item => item.id}
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={refetchServices}
+            colors={[COLORS.primary]}
+          />
+        }
+      />
     </View>
   );
 };
@@ -19,14 +39,10 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    padding: 20,
+    backgroundColor: COLORS.background,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
+  content: {
+    padding: 16,
   },
 });
 

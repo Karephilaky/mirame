@@ -1,68 +1,147 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet } from 'react-native';
-import { StackNavigationProp } from '@react-navigation/stack';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { COLORS, commonStyles } from '../../styles/common';
 
-interface Props {
-  navigation: StackNavigationProp<any, any>;
-}
-
-const RegisterScreen: React.FC<Props> = ({ navigation }) => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-
-  const handleRegister = () => {
-    console.log('Registering with:', name, email, password);
-  };
+const RegisterScreen: React.FC = () => {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Register</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Name"
-        value={name}
-        onChangeText={setName}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      <Button title="Register" onPress={handleRegister} />
-      <Button title="Go to Login" onPress={() => navigation.navigate('Login')} />
-    </View>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+    >
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <Text style={styles.title}>Crear Cuenta</Text>
+        <Text style={styles.subtitle}>Completa tus datos para registrarte</Text>
+
+        <View style={styles.inputContainer}>
+          <Ionicons name="person-outline" size={20} color={COLORS.gray} />
+          <TextInput
+            style={styles.input}
+            placeholder="Nombre completo"
+            value={formData.name}
+            onChangeText={(text) => setFormData({...formData, name: text})}
+          />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <Ionicons name="mail-outline" size={20} color={COLORS.gray} />
+          <TextInput
+            style={styles.input}
+            placeholder="Correo electrónico"
+            value={formData.email}
+            onChangeText={(text) => setFormData({...formData, email: text})}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <Ionicons name="lock-closed-outline" size={20} color={COLORS.gray} />
+          <TextInput
+            style={styles.input}
+            placeholder="Contraseña"
+            value={formData.password}
+            onChangeText={(text) => setFormData({...formData, password: text})}
+            secureTextEntry={!showPassword}
+          />
+          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+            <Ionicons 
+              name={showPassword ? "eye-off-outline" : "eye-outline"} 
+              size={20} 
+              color={COLORS.gray}
+            />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.inputContainer}>
+          <Ionicons name="lock-closed-outline" size={20} color={COLORS.gray} />
+          <TextInput
+            style={styles.input}
+            placeholder="Confirmar contraseña"
+            value={formData.confirmPassword}
+            onChangeText={(text) => setFormData({...formData, confirmPassword: text})}
+            secureTextEntry={!showPassword}
+          />
+        </View>
+
+        <TouchableOpacity style={styles.registerButton}>
+          <Text style={styles.registerButtonText}>Registrarse</Text>
+        </TouchableOpacity>
+
+        <View style={styles.loginContainer}>
+          <Text style={styles.loginText}>¿Ya tienes una cuenta? </Text>
+          <TouchableOpacity>
+            <Text style={styles.loginLink}>Inicia sesión</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 20,
+    ...commonStyles.container,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
+    ...commonStyles.title,
+  },
+  subtitle: {
+    ...commonStyles.subtitle,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    paddingHorizontal: 15,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#A269FF',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 10,
+    flex: 1,
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+    fontSize: 16,
+  },
+  registerButton: {
+    ...commonStyles.button,
+    marginTop: 8,
+  },
+  registerButtonText: {
+    ...commonStyles.buttonText,
+  },
+  loginContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 24,
+  },
+  loginText: {
+    color: COLORS.gray,
+    fontSize: 14,
+  },
+  loginLink: {
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 

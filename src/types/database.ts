@@ -1,5 +1,11 @@
 // Tipos base de datos
-export type UserRole = '1' | '2' | '3'; // 1: Admin, 2: Empleado, 3: Cliente
+export const ROLES = {
+  ADMIN: '1',
+  EMPLOYEE: '2',
+  CLIENT: '3'
+} as const;
+
+export type UserRole = '1' | '2' | '3'; // IDs como strings
 
 export interface User {
   id: string;
@@ -109,7 +115,12 @@ export interface Producto {
 }
 
 export interface AuthResponse {
-  user: User;
+  user: {
+    id: number;
+    name: string;
+    email: string;
+    role: 'admin' | 'client' | 'employee';
+  };
   token: string;
 }
 

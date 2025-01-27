@@ -1,49 +1,37 @@
 import React from 'react';
-import {
-  View,
-  StyleSheet,
-  FlatList,
-  RefreshControl,
-} from 'react-native';
-import { COLORS } from '../../styles/common';
-import { useServices } from '../../hooks/useServices';
-import ServiceCard from '../../components/ServiceCard';
-import LoadingScreen from '../../components/LoadingScreen';
-import ErrorScreen from '../../components/ErrorScreen';
+import { View } from 'react-native';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store/types';
+import { ROLES } from '../../types/database';
+import { commonStyles } from '../../styles/common';
+
+// Importar los dashboards
+import AdminDashboard from './Dashboards/AdminDashboard';
+import EmployeeDashboard from './Dashboards/EmployeeDashboard';
+import ClientDashboard from './Dashboards/ClientDashboard';
+import DefaultDashboard from './Dashboards/DefaultDashboard';
 
 const HomeScreen = () => {
-  const { services, loading, error, refetchServices } = useServices();
+  const { user } = useSelector((state: RootState) => state.auth);
 
-  if (loading) return <LoadingScreen />;
-  if (error) return <ErrorScreen error={error} onRetry={refetchServices} />;
+  const renderContent = () => {
+    switch (user?.id_rol) {
+      case ROLES.ADMIN:
+        return <AdminDashboard />;
+      case ROLES.EMPLOYEE:
+        return <EmployeeDashboard />;
+      case ROLES.CLIENT:
+        return <ClientDashboard />;
+      default:
+        return <DefaultDashboard />;
+    }
+  };
 
   return (
-    <View style={styles.container}>
-      <FlatList
-        data={services}
-        renderItem={({ item }) => <ServiceCard service={item} />}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.content}
-        refreshControl={
-          <RefreshControl
-            refreshing={loading}
-            onRefresh={refetchServices}
-            colors={[COLORS.primary]}
-          />
-        }
-      />
+    <View style={commonStyles.container}>
+      {renderContent()}
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  content: {
-    padding: 16,
-  },
-});
 
 export default HomeScreen;

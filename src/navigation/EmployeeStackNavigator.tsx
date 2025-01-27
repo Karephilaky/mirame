@@ -1,15 +1,15 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import ProfileScreen from '../screens/Profile/ProfileScreen';
+import EmployeeHomeScreen from '../screens/Employee/EmployeeHomeScreen';
 
 const Stack = createNativeStackNavigator();
 
-const ProfileStackNavigator = () => {
+const EmployeeStackNavigator = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="ProfileMain" component={ProfileScreen} />
+      <Stack.Screen name="EmployeeHome" component={EmployeeHomeScreen} />
     </Stack.Navigator>
   );
 };
 
-export default ProfileStackNavigator; 
+export default EmployeeStackNavigator; 

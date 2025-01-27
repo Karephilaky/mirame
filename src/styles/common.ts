@@ -11,6 +11,9 @@ export const COLORS = {
   error: '#B00020',
   success: '#4CAF50',
   disabled: '#C7C7CC',
+  warning: '#FFC107',
+  info: '#2196F3',
+  danger: '#DC3545',
 } as const;
 
 export const commonStyles = StyleSheet.create({

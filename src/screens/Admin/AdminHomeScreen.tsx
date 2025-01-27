@@ -2,10 +2,10 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { COLORS } from '../../styles/common';
 
-const AppointmentListScreen = () => {
+const AdminHomeScreen = () => {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Lista de Citas</Text>
+      <Text style={styles.title}>Panel de Administración</Text>
     </View>
   );
 };
@@ -13,7 +13,8 @@ const AppointmentListScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: COLORS.background,
   },
   title: {
@@ -23,4 +24,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AppointmentListScreen; 
+export default AdminHomeScreen; 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,41 +7,94 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { TextInput } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../styles/common';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { AuthStackParamList } from '../../navigation/types';
-import { useAppDispatch } from '../../hooks/useRedux';
-import { setUser } from '../../store/slices/authSlice';
-import { authApi } from '../../api';
+import { useDispatch } from 'react-redux';
+import { setUser, setToken } from '../../store/slices/authSlice';
+import authApi from '../../api/auth';
+import { UserRole } from '../../types/database';
+import { ROLES } from '../../types/database';
+import { getHomeScreenByRole, getRoleMessage } from '../../utils/roleNavigation';
 
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp<AuthStackParamList>>();
-  const dispatch = useAppDispatch();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const dispatch = useDispatch();
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
 
   const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
+    if (!formData.email.trim() || !formData.password.trim()) {
       Alert.alert('Error', 'Por favor completa todos los campos');
       return;
     }
 
     try {
       setIsLoading(true);
-      const response = await authApi.login(email, password);
-      dispatch(setUser(response.user));
+      const response = await authApi.login(formData.email, formData.password);
+
+      const userRole = response.user.role === 'client' ? ROLES.CLIENT : 
+                      response.user.role === 'admin' ? ROLES.ADMIN : 
+                      ROLES.EMPLOYEE;
+
+      dispatch(setUser({
+        id: String(response.user.id),
+        nombre: response.user.name,
+        email: response.user.email,
+        telefono: '',
+        id_rol: userRole,
+        creado_en: new Date(),
+        actualizado_en: new Date()
+      }));
+
+      if (response.token) {
+        dispatch(setToken(response.token));
+        
+        // Mostrar mensaje de bienvenida según el rol
+        Alert.alert(
+          'Inicio de Sesión Exitoso',
+          getRoleMessage(userRole),
+          [
+            { 
+              text: 'Continuar',
+              onPress: () => navigation.navigate(getHomeScreenByRole(userRole) as never)
+            }
+          ]
+        );
+      }
     } catch (error) {
-      Alert.alert('Error', 'Credenciales inválidas');
+      Alert.alert(
+        'Error',
+        error instanceof Error 
+          ? error.message 
+          : 'Error al iniciar sesión. Por favor, intenta de nuevo.'
+      );
     } finally {
       setIsLoading(false);
     }
   };
+
+  const testConnection = async () => {
+    try {
+      const response = await fetch('http://192.168.100.129:3000/api');
+      console.log('Conexión exitosa:', response.status);
+    } catch (error) {
+      console.error('Error de conexión:', error);
+    }
+  };
+
+  useEffect(() => {
+    testConnection();
+  }, []);
 
   return (
     <KeyboardAvoidingView 
@@ -60,8 +113,8 @@ const LoginScreen: React.FC = () => {
           <TextInput
             mode="outlined"
             label="Correo electrónico"
-            value={email}
-            onChangeText={setEmail}
+            value={formData.email}
+            onChangeText={(text) => setFormData({ ...formData, email: text })}
             autoCapitalize="none"
             keyboardType="email-address"
             style={styles.input}
@@ -71,8 +124,8 @@ const LoginScreen: React.FC = () => {
           <TextInput
             mode="outlined"
             label="Contraseña"
-            value={password}
-            onChangeText={setPassword}
+            value={formData.password}
+            onChangeText={(text) => setFormData({ ...formData, password: text })}
             secureTextEntry={!showPassword}
             right={
               <TextInput.Icon 
@@ -98,7 +151,7 @@ const LoginScreen: React.FC = () => {
             disabled={isLoading}
           >
             <Text style={styles.loginButtonText}>
-              {isLoading ? 'Iniciando sesión...' : 'Iniciar sesión'}
+              {isLoading ? <ActivityIndicator color={COLORS.white} /> : 'Iniciar sesión'}
             </Text>
           </TouchableOpacity>
 

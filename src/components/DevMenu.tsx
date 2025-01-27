@@ -6,7 +6,6 @@ import {
   StyleSheet,
   Modal,
   ScrollView,
-  Alert,
 } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { COLORS } from '../styles/common';
@@ -14,7 +13,6 @@ import { RootStackParamList } from '../navigation/types';
 import { useAppDispatch, useAppSelector } from '../hooks/useRedux';
 import { setUser } from '../store/slices/authSlice';
 import { UserRole } from '../types/database';
-import healthApi from '../api/health';
 
 type Route = {
   name: string;
@@ -41,7 +39,6 @@ const DevMenu: React.FC = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const dispatch = useAppDispatch();
   const { user } = useAppSelector(state => state.auth);
-  const [isLoading, setIsLoading] = useState(false);
 
   // Inicializamos el usuario de prueba si no existe
   useEffect(() => {
@@ -141,24 +138,6 @@ const DevMenu: React.FC = () => {
     setVisible(false);
   };
 
-  const testConnection = async () => {
-    try {
-      setIsLoading(true);
-      const response = await healthApi.check();
-      Alert.alert(
-        'Conexión Exitosa',
-        `Servidor respondió: ${response.message}\nTimestamp: ${response.timestamp}`
-      );
-    } catch (error) {
-      Alert.alert(
-        'Error de Conexión',
-        'No se pudo conectar con el servidor. Verifica que el backend esté corriendo.'
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const renderSection = (title: string, routes: Route[]) => (
     <View style={styles.section} key={title}>
       <Text style={styles.sectionTitle}>{title}</Text>
@@ -236,18 +215,6 @@ const DevMenu: React.FC = () => {
               {Object.entries(routes).map(([key, value]) => 
                 renderSection(key, value)
               )}
-
-              <View style={styles.section}>
-                <TouchableOpacity
-                  style={styles.button}
-                  onPress={testConnection}
-                  disabled={isLoading}
-                >
-                  <Text style={styles.buttonText}>
-                    {isLoading ? 'Probando...' : 'Probar Conexión'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
             </ScrollView>
           </View>
         </View>
@@ -354,16 +321,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.gray,
     marginTop: 4,
-  },
-  button: {
-    backgroundColor: COLORS.primary,
-    padding: 8,
-    borderRadius: 4,
-    marginVertical: 4,
-  },
-  buttonText: {
-    color: COLORS.white,
-    fontSize: 12,
   },
 });
 

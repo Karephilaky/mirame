@@ -1,79 +1,76 @@
-import { API_CONFIG, API_ENDPOINTS } from '../config/api';
-import { AuthResponse, User } from '../types/database';
+import axiosInstance from '../config/axios';
+import { AuthResponse } from '../types/database';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+
+interface ApiError extends Error {
+  name: string;
+  message: string;
+}
 
 const authApi = {
   login: async (email: string, password: string): Promise<AuthResponse> => {
     try {
-      const response = await fetch(`${API_CONFIG.BASE_URL}${API_ENDPOINTS.AUTH.LOGIN}`, {
-        method: 'POST',
-        headers: API_CONFIG.HEADERS,
-        body: JSON.stringify({ email, password }),
+      const { data } = await axiosInstance.post<AuthResponse>('/auth/login', {
+        email,
+        password,
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Error en la autenticación');
+      if (data.token) {
+        await AsyncStorage.setItem('access_token', data.token);
       }
 
-      return response.json();
+      return data;
     } catch (error) {
-      console.error('Error en login:', error);
+      if (axios.isAxiosError(error)) {
+        const message = error.response?.data?.message || 'Error al iniciar sesión';
+        throw new Error(message);
+      }
       throw error;
     }
   },
 
-  register: async (userData: any): Promise<AuthResponse> => {
+  register: async (registerData: {
+    name: string;
+    email: string;
+    password: string;
+    phone?: string;
+    role: string;
+  }): Promise<AuthResponse> => {
     try {
-      const response = await fetch(`${API_CONFIG.BASE_URL}${API_ENDPOINTS.AUTH.REGISTER}`, {
-        method: 'POST',
-        headers: API_CONFIG.HEADERS,
-        body: JSON.stringify(userData),
-      });
+      const { data } = await axiosInstance.post<AuthResponse>('/auth/register', registerData);
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Error en el registro');
+      if (data.token) {
+        await AsyncStorage.setItem('access_token', data.token);
       }
 
-      return response.json();
+      return data;
     } catch (error) {
-      console.error('Error en register:', error);
+      if (axios.isAxiosError(error)) {
+        const message = error.response?.data?.message || 'Error al registrar usuario';
+        throw new Error(message);
+      }
       throw error;
     }
   },
 
-  requestPasswordReset: async (email: string): Promise<boolean> => {
+  requestPasswordReset: async (email: string): Promise<void> => {
     try {
-      const response = await fetch(`${API_CONFIG.BASE_URL}${API_ENDPOINTS.AUTH.FORGOT_PASSWORD}`, {
-        method: 'POST',
-        headers: API_CONFIG.HEADERS,
-        body: JSON.stringify({ email }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Error al solicitar el restablecimiento de contraseña');
-      }
-
-      return true;
+      await axiosInstance.post('/api/auth/forgot-password', { email });
     } catch (error) {
-      console.error('Error en requestPasswordReset:', error);
+      console.error('Error en solicitud de reset:', error);
       throw error;
     }
   },
 
-  resetPassword: async (token: string, newPassword: string): Promise<boolean> => {
+  resetPassword: async (token: string, password: string): Promise<void> => {
     try {
-      const response = await fetch(`${API_CONFIG.BASE_URL}${API_ENDPOINTS.AUTH.RESET_PASSWORD}/${token}`, {
-        method: 'POST',
-        headers: API_CONFIG.HEADERS,
-        body: JSON.stringify({ password: newPassword }),
+      await axiosInstance.post('/api/auth/reset-password', {
+        token,
+        password,
       });
-
-      if (!response.ok) throw new Error('Error al restablecer la contraseña');
-      return true;
     } catch (error) {
-      console.error('Error en resetPassword:', error);
+      console.error('Error en reset de contraseña:', error);
       throw error;
     }
   },

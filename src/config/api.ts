@@ -1,33 +1,32 @@
-import { API_URL_DEV, API_URL_PROD } from '@env';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
-// Actualizamos la configuración de la API para usar las variables de entorno
-const BASE_URL = __DEV__ ? 'http://localhost:3002/api' : API_URL_PROD;
+const getBaseUrl = () => {
+  if (__DEV__) {
+    if (Platform.OS === 'android') {
+      return 'http://10.0.2.2:3000'; // Sin /api al final
+    } else {
+      return 'http://localhost:3000'; // Sin /api al final
+    }
+  }
+  return 'https://tu-url-produccion.com';
+};
 
 export const API_CONFIG = {
-  BASE_URL,
-  TIMEOUT: 10000, // timeout en milisegundos
+  BASE_URL: getBaseUrl(),
   HEADERS: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
-  getToken: async () => {
-    try {
-      return await AsyncStorage.getItem('token') || '';
-    } catch (error) {
-      console.error('Error getting token:', error);
-      return '';
-    }
-  },
+  TIMEOUT: 30000, // Aumentamos el timeout a 30 segundos
 };
 
 // Actualizamos los endpoints para que coincidan con el backend
 export const API_ENDPOINTS = {
   AUTH: {
-    LOGIN: '/auth/login',
-    REGISTER: '/auth/register',
-    FORGOT_PASSWORD: '/auth/forgot-password',
-    RESET_PASSWORD: '/auth/reset-password',
+    LOGIN: '/api/auth/login',
+    REGISTER: '/api/auth/register',
+    FORGOT_PASSWORD: '/api/auth/forgot-password',
+    RESET_PASSWORD: '/api/auth/reset-password',
   },
   USERS: {
     BASE: '/users',

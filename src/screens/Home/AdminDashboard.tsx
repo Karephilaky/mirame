@@ -2,10 +2,10 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { COLORS } from '../../styles/common';
 
-const AppointmentListScreen = () => {
+const AdminDashboard = () => {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Lista de Citas</Text>
+      <Text style={styles.title}>Panel de Administración</Text>
     </View>
   );
 };
@@ -23,4 +23,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AppointmentListScreen; 
+export default AdminDashboard; 

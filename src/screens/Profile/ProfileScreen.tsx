@@ -14,6 +14,9 @@ import { COLORS, commonStyles } from '../../styles/common';
 import { NavigationProp, useNavigation, CompositeNavigationProp } from '@react-navigation/native';
 import { ProfileStackParamList, RootStackParamList } from '../../navigation/types';
 import { CompositeProfileScreenNavigationProp } from '../../navigation/types';
+import { useDispatch, useSelector } from 'react-redux';
+import { logout } from '../../store/slices/authSlice';
+import { RootState } from '../../store/types';
 
 interface UserProfile {
   id: string;
@@ -37,6 +40,8 @@ type ProfileScreenNavigationProp = CompositeNavigationProp<
 
 const ProfileScreen = () => {
   const navigation = useNavigation<CompositeProfileScreenNavigationProp>();
+  const dispatch = useDispatch();
+  const user = useSelector((state: RootState) => state.auth.user);
   
   const [profile] = useState<UserProfile>({
     id: '1',
@@ -84,18 +89,16 @@ const ProfileScreen = () => {
   const handleLogout = () => {
     Alert.alert(
       'Cerrar Sesión',
-      '¿Estás seguro de que deseas cerrar sesión?',
+      '¿Estás seguro que deseas cerrar sesión?',
       [
-        { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Cerrar Sesión', 
+        {
+          text: 'Cancelar',
+          style: 'cancel'
+        },
+        {
+          text: 'Sí, cerrar sesión',
           style: 'destructive',
-          onPress: () => {
-            navigation.getParent()?.reset({
-              index: 0,
-              routes: [{ name: 'Auth' }],
-            });
-          }
+          onPress: () => dispatch(logout())
         }
       ]
     );
@@ -129,7 +132,7 @@ const ProfileScreen = () => {
               <Ionicons name="camera" size={20} color={COLORS.white} />
             </TouchableOpacity>
           </View>
-          <Text style={styles.name}>{profile.name}</Text>
+          <Text style={styles.name}>{user?.nombre}</Text>
           <Text style={styles.role}>
             {profile.role === 'admin' ? 'Administrador' : 'Empleado'}
           </Text>

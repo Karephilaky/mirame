@@ -1,16 +1,17 @@
 import React from 'react';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import ServiceListScreen from '../screens/Services/ServiceListScreen';
 import ServiceFormScreen from '../screens/Services/ServiceFormScreen';
 import { ServiceStackParamList } from './types';
 
-const Stack = createStackNavigator<ServiceStackParamList>();
+const Stack = createNativeStackNavigator();
 
-const ServiceStackNavigator = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
-    <Stack.Screen name="ServiceList" component={ServiceListScreen} />
-    <Stack.Screen name="ServiceForm" component={ServiceFormScreen} />
-  </Stack.Navigator>
-);
+const ServiceStackNavigator = () => {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="ServiceList" component={ServiceListScreen} />
+    </Stack.Navigator>
+  );
+};
 
-export default ServiceStackNavigator; 
+export default ServiceStackNavigator;

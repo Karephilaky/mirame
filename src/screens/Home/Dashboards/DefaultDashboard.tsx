@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { COLORS } from '../../styles/common';
+import { COLORS } from '../../../styles/common';
 
-const AppointmentListScreen = () => {
+const DefaultDashboard = () => {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Lista de Citas</Text>
+      <Text style={styles.title}>Bienvenido</Text>
     </View>
   );
 };
@@ -23,4 +23,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AppointmentListScreen; 
+export default DefaultDashboard; 

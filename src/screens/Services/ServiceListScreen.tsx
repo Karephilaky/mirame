@@ -1,22 +1,11 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { useServices } from '../../hooks/useServices';
-import ServiceCard from '../../components/ServiceCard';
-import LoadingScreen from '../../components/LoadingScreen';
-import ErrorScreen from '../../components/ErrorScreen';
+import { View, Text, StyleSheet } from 'react-native';
 import { COLORS } from '../../styles/common';
 
 const ServiceListScreen = () => {
-  const { services, loading, error, refetchServices } = useServices();
-
-  if (loading) return <LoadingScreen />;
-  if (error) return <ErrorScreen error={error} onRetry={refetchServices} />;
-
   return (
     <View style={styles.container}>
-      {services.map(service => (
-        <ServiceCard key={service.id} service={service} />
-      ))}
+      <Text style={styles.title}>Lista de Servicios</Text>
     </View>
   );
 };
@@ -24,8 +13,13 @@ const ServiceListScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
+    padding: 20,
     backgroundColor: COLORS.background,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: COLORS.primary,
   },
 });
 

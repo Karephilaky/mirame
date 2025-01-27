@@ -34,9 +34,15 @@ export type RootStackParamList = {
 export type MainTabParamList = {
   Home: undefined;
   Appointments: undefined;
-  Clients: undefined;
   Services: undefined;
   Profile: undefined;
+  // Admin screens
+  AdminEmployees: undefined;
+  AdminReports: undefined;
+  // Employee screens
+  EmployeeClients: undefined;
+  // Client screens
+  ClientAppointments: undefined;
 };
 
 export type HomeStackParamList = {
@@ -46,9 +52,11 @@ export type HomeStackParamList = {
 };
 
 export type AppointmentStackParamList = {
+  CalendarMain: undefined;
   DayAppointments: { date: string };
-  NewAppointment: undefined;
   AppointmentDetail: { appointmentId: string };
+  NewAppointment: { appointmentId?: string };
+  ClientDetail: { clientId: string };
 };
 
 export type ClientStackParamList = {
@@ -63,12 +71,16 @@ export type ServiceFormScreenParams = {
 
 export type ServiceStackParamList = {
   ServiceList: undefined;
-  ServiceForm: { serviceId?: string };
+  ServiceForm: ServiceFormScreenParams;
 };
 
 export type ProfileStackParamList = {
   ProfileMain: undefined;
   EditProfile: undefined;
+  ChangePassword: undefined;
+  BusinessInfo: undefined;
+  PaymentMethods: undefined;
+  Support: undefined;
 };
 
 export type HomeScreenNavigationProp = CompositeNavigationProp<
@@ -99,4 +111,9 @@ export type CompositeProfileScreenNavigationProp = CompositeNavigationProp<
     NavigationProp<MainTabParamList>,
     NavigationProp<RootStackParamList>
   >
->; 
+>;
+
+export type ReportStackParamList = {
+  Reports: undefined;
+  ReportDetail: { reportId: string };
+}; 

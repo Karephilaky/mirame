@@ -35,10 +35,7 @@ const servicesApi = {
     try {
       const response = await fetch(`${API_CONFIG.BASE_URL}${API_ENDPOINTS.SERVICES.BASE}`, {
         method: 'POST',
-        headers: {
-          ...API_CONFIG.HEADERS,
-          'Authorization': `Bearer ${await API_CONFIG.getToken()}`,
-        },
+        headers: API_CONFIG.HEADERS,
         body: JSON.stringify(serviceData),
       });
 
@@ -76,12 +73,9 @@ const servicesApi = {
 
   delete: async (id: string): Promise<void> => {
     try {
-      const response = await fetch(`${API_CONFIG.BASE_URL}${API_ENDPOINTS.SERVICES.DELETE(id)}`, {
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_ENDPOINTS.SERVICES.BY_ID(id)}`, {
         method: 'DELETE',
-        headers: {
-          ...API_CONFIG.HEADERS,
-          'Authorization': `Bearer ${await API_CONFIG.getToken()}`,
-        },
+        headers: API_CONFIG.HEADERS,
       });
 
       if (!response.ok) {

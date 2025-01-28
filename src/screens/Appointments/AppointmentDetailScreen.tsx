@@ -9,24 +9,26 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
-import { AppointmentStackParamList, AppointmentScreenNavigationProp } from '../../navigation/types';
+import { ClientStackParamList, ClientScreenNavigationProp } from '../../navigation/types';
 import { COLORS } from '../../styles/common';
 import { Appointment, AppointmentStatus } from '../../types/database';
 import { useAppSelector, useAppDispatch } from '../../hooks/useRedux';
 import { Ionicons } from '@expo/vector-icons';
 import { formatAppointmentDate } from '../../utils/dateUtils';
+import { format } from 'date-fns';
+import { getStatusColor, getStatusText } from '../../utils/appointmentUtils';
 
-type AppointmentDetailRouteProp = RouteProp<AppointmentStackParamList, 'AppointmentDetail'>;
+type AppointmentDetailRouteProp = RouteProp<ClientStackParamList, 'AppointmentDetail'>;
 
-export const AppointmentDetailScreen: React.FC = () => {
+const AppointmentDetailScreen = () => {
   const route = useRoute<AppointmentDetailRouteProp>();
-  const navigation = useNavigation<AppointmentScreenNavigationProp>();
+  const navigation = useNavigation<ClientScreenNavigationProp>();
   const dispatch = useAppDispatch();
   const { appointmentId } = route.params;
   const [loading, setLoading] = useState(false);
-  const appointment = useAppSelector(state => 
-    state.appointments.appointments.find(a => a.id === appointmentId)
-  );
+  const { items: appointments } = useAppSelector(state => state.appointments);
+
+  const appointment = appointments.find((a: Appointment) => a.id === appointmentId);
 
   const handleStatusChange = async (newStatus: AppointmentStatus) => {
     Alert.alert(
@@ -54,8 +56,12 @@ export const AppointmentDetailScreen: React.FC = () => {
     );
   };
 
-  const handleEdit = () => {
-    navigation.navigate('NewAppointment', { appointmentId });
+  const handleReschedule = () => {
+    navigation.navigate('ServiceList');
+  };
+
+  const handleViewClient = () => {
+    navigation.navigate('Profile');
   };
 
   const handleDelete = () => {
@@ -85,6 +91,11 @@ export const AppointmentDetailScreen: React.FC = () => {
     );
   };
 
+  const formatDate = (date: Date | undefined) => {
+    if (!date) return '';
+    return format(new Date(date), 'dd/MM/yyyy');
+  };
+
   if (!appointment) {
     return (
       <View style={styles.container}>
@@ -106,7 +117,7 @@ export const AppointmentDetailScreen: React.FC = () => {
         <View style={styles.headerButtons}>
           <TouchableOpacity
             style={styles.iconButton}
-            onPress={handleEdit}
+            onPress={handleReschedule}
           >
             <Ionicons name="create-outline" size={24} color={COLORS.primary} />
           </TouchableOpacity>
@@ -119,42 +130,27 @@ export const AppointmentDetailScreen: React.FC = () => {
         </View>
       </View>
 
-      <View style={styles.infoSection}>
-        <Text style={styles.sectionTitle}>Fecha y Hora</Text>
-        <Text style={styles.infoText}>
-          {formatAppointmentDate(appointment.fecha)}
+      <View style={styles.appointmentInfo}>
+        <Text style={styles.label}>Fecha:</Text>
+        <Text style={styles.value}>{formatDate(appointment?.fecha)}</Text>
+        
+        <Text style={styles.label}>Hora:</Text>
+        <Text style={styles.value}>{appointment?.time || appointment?.hora}</Text>
+        
+        <Text style={styles.label}>Estado:</Text>
+        <Text style={[
+          styles.status,
+          { color: getStatusColor(appointment?.status || appointment?.estado) }
+        ]}>
+          {getStatusText(appointment?.status || appointment?.estado)}
         </Text>
-        <Text style={styles.infoText}>{appointment.hora}</Text>
-      </View>
-
-      <View style={styles.infoSection}>
-        <Text style={styles.sectionTitle}>Estado</Text>
-        <View style={styles.statusButtons}>
-          {['pendiente', 'confirmada', 'cancelada', 'completada'].map((status) => (
-            <TouchableOpacity
-              key={status}
-              style={[
-                styles.statusButton,
-                appointment.estado === status && styles.statusButtonActive,
-              ]}
-              onPress={() => handleStatusChange(status as AppointmentStatus)}
-            >
-              <Text style={[
-                styles.statusButtonText,
-                appointment.estado === status && styles.statusButtonTextActive,
-              ]}>
-                {status.charAt(0).toUpperCase() + status.slice(1)}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
       </View>
 
       <View style={styles.infoSection}>
         <Text style={styles.sectionTitle}>Cliente</Text>
         <TouchableOpacity
           style={styles.clientButton}
-          onPress={() => navigation.navigate('ClientDetail', { clientId: appointment.id_cliente })}
+          onPress={handleViewClient}
         >
           <Text style={styles.clientButtonText}>Ver detalles del cliente</Text>
           <Ionicons name="chevron-forward" size={24} color={COLORS.primary} />
@@ -196,6 +192,28 @@ const styles = StyleSheet.create({
     padding: 8,
     marginLeft: 8,
   },
+  appointmentInfo: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  label: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 8,
+  },
+  value: {
+    fontSize: 16,
+    color: COLORS.text,
+    marginBottom: 4,
+  },
+  status: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 4,
+  },
   infoSection: {
     padding: 16,
     borderBottomWidth: 1,
@@ -206,11 +224,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.text,
     marginBottom: 8,
-  },
-  infoText: {
-    fontSize: 16,
-    color: COLORS.text,
-    marginBottom: 4,
   },
   statusButtons: {
     flexDirection: 'row',
@@ -256,4 +269,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
   },
-}); 
+});
+
+export default AppointmentDetailScreen; 

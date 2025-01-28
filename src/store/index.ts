@@ -1,32 +1,52 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { persistStore, persistReducer } from 'redux-persist';
+import { configureStore, combineReducers } from '@reduxjs/toolkit';
+import { persistStore, persistReducer, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import authReducer from './slices/authSlice';
+import { PersistPartial } from 'redux-persist/es/persistReducer';
+
+// Importar reducers y sus tipos
+import authReducer, { AuthState } from './slices/authSlice';
+import servicesReducer, { ServicesState } from './slices/servicesSlice';
 import appointmentsReducer from './slices/appointmentsSlice';
-import servicesReducer from './slices/servicesSlice';
+import type { AppointmentsState } from './slices/appointmentsSlice';
+import profileReducer, { ProfileState } from './slices/profileSlice';
+import uiReducer, { UiState } from './slices/uiSlice';
+
+// Definir el tipo del estado raíz
+export interface RootState {
+  auth: AuthState;
+  services: ServicesState;
+  appointments: AppointmentsState;
+  profile: ProfileState;
+  ui: UiState;
+}
 
 const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
-  whitelist: ['auth', 'services'] // Persistimos auth y services
+  whitelist: ['auth', 'services']
 };
 
-const persistedAuthReducer = persistReducer(persistConfig, authReducer);
-const persistedServicesReducer = persistReducer(persistConfig, servicesReducer);
+const rootReducer = combineReducers({
+  auth: authReducer,
+  services: servicesReducer,
+  appointments: appointmentsReducer,
+  profile: profileReducer,
+  ui: uiReducer
+});
+
+const persistedReducer = persistReducer<RootState>(persistConfig, rootReducer);
 
 export const store = configureStore({
-  reducer: {
-    auth: persistedAuthReducer,
-    appointments: appointmentsReducer,
-    services: persistedServicesReducer,
-  },
+  reducer: persistedReducer,
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
-      serializableCheck: false,
+      serializableCheck: {
+        ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+        ignoredPaths: ['auth.user.creado_en', 'auth.user.actualizado_en'],
+      },
     }),
 });
 
 export const persistor = persistStore(store);
-
-export type RootState = ReturnType<typeof store.getState>;
-export type AppDispatch = typeof store.dispatch; 
+export type AppDispatch = typeof store.dispatch;
+export type StoreState = ReturnType<typeof store.getState>; 

@@ -16,13 +16,18 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, commonStyles } from '../../styles/common';
 import { useAppSelector, useAppDispatch } from '../../hooks/useRedux';
-import { setServices, deleteService, updateService, setLoading, setError } from '../../store/slices/servicesSlice';
+import { 
+  fetchServices, 
+  deleteService, 
+  updateService 
+} from '../../store/slices/servicesSlice';
 import { Servicio, CATEGORIAS_SERVICIOS } from '../../types/database';
 import { useNavigation } from '@react-navigation/native';
-import { ServiceScreenNavigationProp, ServiceStackParamList } from '../../navigation/types';
-import servicesApi from '../../api/services';
+import { ServiceStackParamList } from '../../navigation/types';
+import servicesApi from '../../services/api/api/services';
 import ServiceStats from '../../components/Services/ServiceStats';
 import { useLoadingState } from '../../hooks/useLoadingState';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type SortOption = {
   id: string;
@@ -44,23 +49,33 @@ const SORT_OPTIONS: SortOption[] = [
 // Servicios de ejemplo para desarrollo
 const mockServices: Servicio[] = [
   {
-    id: '1',
+    id: 1,
     nombre: 'Corte de Cabello',
     descripcion: 'Corte básico',
-    duracion: '30',
+    duracion: 30,
     precio: 200,
     activo: true,
-    categoria: '1',
+    categoria_id: 1,
     creado_en: new Date(),
     actualizado_en: new Date(),
   },
   // ... más servicios de ejemplo
 ];
 
+type ServiceScreenNavigationProp = NativeStackNavigationProp<ServiceStackParamList>;
+
+interface ServicesApi {
+  getServices: () => Promise<Servicio[]>;
+  getServiceById: (id: string) => Promise<Servicio>;
+  updateService: (id: string, data: Partial<Servicio>) => Promise<Servicio>;
+  deleteService: (id: string) => Promise<void>;
+  createService: (data: Partial<Servicio>) => Promise<Servicio>;
+}
+
 const ServiceScreen: React.FC = () => {
   const navigation = useNavigation<ServiceScreenNavigationProp>();
   const dispatch = useAppDispatch();
-  const { services, isLoading } = useAppSelector(state => state.services);
+  const { items: services, loading, error } = useAppSelector(state => state.services);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterActive, setFilterActive] = useState<boolean | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -70,17 +85,19 @@ const ServiceScreen: React.FC = () => {
 
   const sortServices = (services: Servicio[]) => {
     return [...services].sort((a, b) => {
-      const valueA = a[selectedSort.value];
-      const valueB = b[selectedSort.value];
-      
-      if (valueA < valueB) return selectedSort.reverse ? 1 : -1;
-      if (valueA > valueB) return selectedSort.reverse ? -1 : 1;
-      return 0;
+      const aValue = Number(a[selectedSort.value]);
+      const bValue = Number(b[selectedSort.value]);
+      return selectedSort.reverse ? bValue - aValue : aValue - bValue;
     });
   };
 
+  const filteredServices = services.filter(service => {
+    const serviceCategoriaId = Number(service.categoria_id);
+    return selectedCategory === null ? true : serviceCategoriaId === Number(selectedCategory);
+  });
+
   const filteredAndSortedServices = sortServices(
-    services
+    filteredServices
       .filter(service => 
         service.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
         service.descripcion.toLowerCase().includes(searchQuery.toLowerCase())
@@ -88,76 +105,47 @@ const ServiceScreen: React.FC = () => {
       .filter(service => 
         filterActive === null ? true : service.activo === filterActive
       )
-      .filter(service =>
-        selectedCategory === null ? true : service.categoria === selectedCategory
-      )
   );
 
   useEffect(() => {
-    // Si no hay servicios, cargamos los de ejemplo
-    if (services.length === 0) {
-      dispatch(setServices(mockServices));
-    }
-  }, []);
+    dispatch(fetchServices());
+  }, [dispatch]);
 
-  const loadServices = async () => {
+  const handleDeleteService = async (service: Servicio) => {
     try {
-      await withLoading(async () => {
-        const data = await servicesApi.getAll();
-        dispatch(setServices(data));
-      });
+      await dispatch(deleteService(service.id.toString())).unwrap();
+      // Mostrar mensaje de éxito
     } catch (error) {
-      dispatch(setError('No se pudieron cargar los servicios'));
+      // Mostrar mensaje de error
     }
   };
 
-  const handleDeleteService = (service: Servicio) => {
-    Alert.alert(
-      'Eliminar Servicio',
-      `¿Estás seguro de que deseas eliminar ${service.nombre}?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await servicesApi.delete(service.id);
-              dispatch(deleteService(service.id));
-              Alert.alert('Éxito', 'Servicio eliminado correctamente');
-            } catch (error) {
-              Alert.alert('Error', 'No se pudo eliminar el servicio');
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleToggleService = async (service: Servicio) => {
+  const handleUpdateService = async (service: Servicio) => {
     try {
-      const updatedService = await servicesApi.toggleActive(service.id, !service.activo);
-      dispatch(updateService(updatedService));
+      await dispatch(updateService({ 
+        id: service.id.toString(), 
+        data: service 
+      })).unwrap();
+      // Mostrar mensaje de éxito
     } catch (error) {
-      Alert.alert('Error', 'No se pudo actualizar el estado del servicio');
+      // Mostrar mensaje de error
     }
   };
 
   const handleDuplicateService = async (service: Servicio) => {
     try {
-      const duplicatedService: Partial<Servicio> = {
+      const duplicatedService = {
         nombre: `${service.nombre} (Copia)`,
         descripcion: service.descripcion,
         duracion: service.duracion,
         precio: service.precio,
-        categoria: service.categoria,
+        categoria_id: service.categoria_id,
         activo: true,
       };
 
-      const newService = await servicesApi.create(duplicatedService);
-
+      const newService = await servicesApi.createService(duplicatedService);
       if (newService) {
-        dispatch(setServices([...services, newService]));
+        dispatch(fetchServices());
         Alert.alert('Éxito', 'Servicio duplicado correctamente');
       }
     } catch (error) {
@@ -165,69 +153,101 @@ const ServiceScreen: React.FC = () => {
     }
   };
 
-  const getCategoriaColor = (categoriaId: string) => {
-    const categoria = CATEGORIAS_SERVICIOS.find(cat => cat.id === categoriaId);
-    return categoria?.color || COLORS.gray;
+  const handleNavigate = (screen: keyof ServiceStackParamList, params?: any) => {
+    navigation.navigate(screen, params);
+  };
+  const getCategoriaColor = (categoriaId: number) => {
+    const categoria = CATEGORIAS_SERVICIOS.find(cat => cat.id === String(categoriaId));
+    return categoria?.color || COLORS.primary;
   };
 
-  const renderServiceCard = (service: Servicio) => (
-    <View key={service.id} style={styles.serviceCard}>
-      <View style={styles.serviceHeader}>
-        <View style={styles.serviceInfo}>
-          <Text style={styles.serviceName}>{service.nombre}</Text>
-          <View style={styles.serviceDetails}>
-            <Text style={styles.serviceDuration}>
-              <Ionicons name="time-outline" size={14} color={COLORS.gray} />
-              {' '}{service.duracion}
-            </Text>
-            <View 
-              style={[
-                styles.categoryBadge, 
-                { backgroundColor: getCategoriaColor(service.categoria) + '20' }
-              ]}
-            >
-              <Text 
+  const handleServicePress = (service: Servicio) => {
+    const serviceData = {
+      ...service,
+      id: Number(service.id),
+      categoria_id: Number(service.categoria_id),
+      precio: Number(service.precio),
+      duracion: Number(service.duracion)
+    };
+    handleNavigate('ServiceForm', { serviceId: serviceData.id });
+  };
+
+  const handleCreateService = async () => {
+    try {
+      const defaultService: Partial<Servicio> = {
+        nombre: '',
+        descripcion: '',
+        duracion: 30,
+        precio: 0,
+        categoria_id: 1,
+        activo: true
+      };
+      await servicesApi.createService(defaultService);
+      dispatch(fetchServices());
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo crear el servicio');
+    }
+  };
+
+  const renderServiceCard = (service: Servicio) => {
+    const categoriaId = Number(service.categoria_id);
+    const categoria = CATEGORIAS_SERVICIOS.find(cat => Number(cat.id) === categoriaId);
+    
+    return (
+      <View key={Number(service.id)} style={styles.serviceCard}>
+        <View style={styles.serviceHeader}>
+          <View style={styles.serviceInfo}>
+            <Text style={styles.serviceName}>{service.nombre}</Text>
+            <Text style={styles.serviceDescription}>{service.descripcion}</Text>
+            <View style={styles.categoryContainer}>
+              <View 
                 style={[
-                  styles.categoryText,
-                  { color: getCategoriaColor(service.categoria) }
+                  styles.categoryBadge,
+                  { backgroundColor: categoria?.color + '20' }
                 ]}
               >
-                {CATEGORIAS_SERVICIOS.find(cat => cat.id === service.categoria)?.nombre}
-              </Text>
+                <Text 
+                  style={[
+                    styles.categoryText,
+                    { color: categoria?.color }
+                  ]}
+                >
+                  {categoria?.nombre}
+                </Text>
+              </View>
             </View>
           </View>
+          <Switch
+            value={service.activo}
+            onValueChange={() => handleUpdateService(service)}
+          />
         </View>
-        <Switch
-          value={service.activo}
-          onValueChange={() => handleToggleService(service)}
-        />
-      </View>
-      <Text style={styles.serviceDescription}>{service.descripcion}</Text>
-      <View style={styles.serviceFooter}>
-        <Text style={styles.servicePrice}>${service.precio}</Text>
-        <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => handleDuplicateService(service)}
-          >
-            <Ionicons name="copy-outline" size={24} color={COLORS.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => navigation.navigate('ServiceForm', { serviceId: service.id })}
-          >
-            <Ionicons name="create-outline" size={24} color={COLORS.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => handleDeleteService(service)}
-          >
-            <Ionicons name="trash-outline" size={24} color={COLORS.error} />
-          </TouchableOpacity>
+        <View style={styles.serviceFooter}>
+          <Text style={styles.servicePrice}>${service.precio}</Text>
+          <View style={styles.actionButtons}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => handleDuplicateService(service)}
+            >
+              <Ionicons name="copy-outline" size={24} color={COLORS.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => handleServicePress(service)}
+            >
+              <Ionicons name="create-outline" size={24} color={COLORS.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => handleDeleteService(service)}
+            >
+              <Ionicons name="trash-outline" size={24} color={COLORS.error} />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   const renderSortModal = () => (
     <Modal
@@ -283,6 +303,10 @@ const ServiceScreen: React.FC = () => {
 
   const handleAddService = () => {
     navigation.navigate('ServiceForm', { serviceId: undefined });
+  };
+
+  const handleEditService = (serviceId: number) => {
+    navigation.navigate('ServiceForm', { serviceId });
   };
 
   const renderHeader = () => (
@@ -373,7 +397,7 @@ const ServiceScreen: React.FC = () => {
             styles.categoryCount,
             selectedCategory === categoria.id && { color: categoria.color }
           ]}>
-            {services.filter(s => s.categoria === categoria.id).length}
+            {services.filter(s => s.categoria_id === parseInt(categoria.id)).length}
           </Text>
         </TouchableOpacity>
       ))}
@@ -400,7 +424,7 @@ const ServiceScreen: React.FC = () => {
 
   const onRefresh = async () => {
     // Aquí iría la llamada a la API para recargar servicios
-    dispatch(setServices(mockServices));
+    dispatch(fetchServices());
   };
 
   return (
@@ -419,7 +443,7 @@ const ServiceScreen: React.FC = () => {
       {renderHeader()}
       {renderCategoryFilters()}
 
-      {isLoading ? (
+      {loading ? (
         <ActivityIndicator size="large" color={COLORS.primary} />
       ) : (
         <ScrollView style={styles.content}>
@@ -427,10 +451,10 @@ const ServiceScreen: React.FC = () => {
           <FlatList
             data={filteredAndSortedServices}
             refreshControl={
-              <RefreshControl refreshing={isLoading} onRefresh={onRefresh} />
+              <RefreshControl refreshing={loading} onRefresh={onRefresh} />
             }
             renderItem={({ item }) => renderServiceCard(item)}
-            keyExtractor={item => item.id}
+            keyExtractor={(item) => item.id.toString()}
             ListEmptyComponent={renderEmptyState}
           />
         </ScrollView>
@@ -496,15 +520,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.text,
     marginBottom: 4,
-  },
-  serviceDetails: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  serviceDuration: {
-    fontSize: 14,
-    color: COLORS.gray,
   },
   serviceDescription: {
     fontSize: 14,
@@ -689,6 +704,11 @@ const styles = StyleSheet.create({
   selectedSortOptionText: {
     color: COLORS.primary,
     fontWeight: '500',
+  },
+  categoryContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
   },
 });
 

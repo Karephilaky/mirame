@@ -1,19 +1,20 @@
 // Tipos base de datos
 export const ROLES = {
-  ADMIN: '1',
-  EMPLOYEE: '2',
-  CLIENT: '3'
+  ADMIN: 'admin',
+  EMPLOYEE: 'employee',
+  CLIENT: 'client'
 } as const;
 
-export type UserRole = '1' | '2' | '3'; // IDs como strings
+export type UserRole = 'admin' | 'employee' | 'client'; // Ajustado para coincidir con AuthResponse
 
 export interface User {
-  id: string;
-  nombre: string;
+  id: number;
+  name: string;
   email: string;
-  telefono: string;
+  telefono?: string;
+  id_rol: string;
+  role: UserRole;
   imagen?: string;
-  id_rol: UserRole;
   creado_en: Date;
   actualizado_en: Date;
 }
@@ -30,36 +31,39 @@ export interface Cliente {
 }
 
 export interface Empleado {
-  id: string;
-  id_user: string;
-  id_tienda: string;
-  nivel_estudio: string;
-  habilitar_agenda: boolean;
-  comision_porcentaje: number;
+  id: number;
+  nombre: string;
+  email: string;
+  telefono: string;
+  especialidad: string;
+  activo: boolean;
   creado_en: Date;
-  deleted_at?: Date;
+  actualizado_en: Date;
 }
 
 export interface Cita {
-  id: string;
-  id_cliente: string;
-  id_empleado: string;
-  id_servicio: string;
+  id: number;
+  id_cliente: number;
+  id_empleado: number;
+  id_servicio: number;
   fecha: Date;
   hora: string;
+  estado: 'pendiente' | 'confirmada' | 'cancelada' | 'completada';
   turno_asignado: boolean;
   creado_en: Date;
-  deleted_at?: Date;
+  deleted_at: Date | null;
 }
 
 export interface Servicio {
-  id: string;
+  id: number;
   nombre: string;
   descripcion: string;
-  duracion: string;
   precio: number;
-  activo: boolean;
+  duracion: number;
+  imagen?: string;
   categoria: string;
+  activo: boolean;
+  puntos_otorgados: number;
   creado_en: Date;
   actualizado_en: Date;
 }
@@ -119,16 +123,32 @@ export interface AuthResponse {
     id: number;
     name: string;
     email: string;
-    role: 'admin' | 'client' | 'employee';
+    role: UserRole;
   };
   token: string;
 }
 
 export type AppointmentStatus = 'pendiente' | 'confirmada' | 'cancelada' | 'completada';
 
-export interface Appointment extends Reserva {
+export interface Appointment {
+  id: string;
+  userId: string;
+  serviceId: string;
+  date: Date;
+  time: string;
+  status: AppointmentStatus;
+  service: Servicio;
+  createdAt: Date;
+  updatedAt: Date;
+  fecha: Date;
+  hora: string;
   estado: AppointmentStatus;
-  monto: number;
+}
+
+export interface UserStats {
+  totalAppointments: number;
+  loyaltyPoints: number;
+  completedServices: number;
 }
 
 export type CategoriaServicio = {
@@ -146,4 +166,4 @@ export const CATEGORIAS_SERVICIOS: CategoriaServicio[] = [
   { id: '6', nombre: 'Pedicure', color: '#9FA5D5' },
   { id: '7', nombre: 'Maquillaje', color: '#E9967A' },
   { id: '8', nombre: 'Otros', color: '#95A5A6' },
-]; 
+];

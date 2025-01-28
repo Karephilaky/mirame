@@ -3,25 +3,23 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   Alert,
+  TouchableOpacity
 } from 'react-native';
 import { TextInput } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../../styles/common';
-import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { useLoading } from '../../hooks/useLoading';
-import { authApi } from '../../api';
-import { AuthStackParamList } from '../../navigation/types';
+import { COLORS } from '../../constants/colors';
+import { useNavigation } from '@react-navigation/native';
+import { AuthNavigationProp } from '../../navigation/types';
+import { authApi } from '../../services/api/auth.service';
 
-const ForgotPasswordScreen: React.FC = () => {
-  const navigation = useNavigation<NavigationProp<AuthStackParamList>>();
-  const { withLoading } = useLoading();
+const ForgotPasswordScreen = () => {
+  const navigation = useNavigation<AuthNavigationProp>();
   const [email, setEmail] = useState('');
-  const [resetSent, setResetSent] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleResetPassword = async () => {
     if (!email.trim()) {
@@ -29,89 +27,95 @@ const ForgotPasswordScreen: React.FC = () => {
       return;
     }
 
-    const success = await withLoading(
-      () => authApi.requestPasswordReset(email),
-      'Error al enviar el correo de recuperación'
-    );
-
-    if (success) {
-      setResetSent(true);
+    try {
+      setIsLoading(true);
+      await authApi.forgotPassword(email);
+      Alert.alert(
+        'Correo Enviado',
+        'Se ha enviado un enlace de recuperación a tu correo electrónico',
+        [
+          {
+            text: 'OK',
+            onPress: handleSuccess
+          }
+        ]
+      );
+    } catch (error) {
+      Alert.alert(
+        'Error',
+        error instanceof Error 
+          ? error.message 
+          : 'Error al enviar el correo de recuperación'
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  const handleNavigation = () => {
+    navigation.navigate('Auth', {
+      screen: 'Login'
+    });
+  };
+
+  const handleSuccess = () => {
+    navigation.navigate('Auth', {
+      screen: 'Login'
+    });
+  };
+
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={handleNavigation}
         >
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          <Ionicons name="arrow-back" size={24} color={COLORS.primary} />
         </TouchableOpacity>
 
-        <View style={styles.content}>
+        <View style={styles.header}>
           <View style={styles.iconContainer}>
-            <Ionicons name="lock-open-outline" size={100} color={COLORS.primary} />
+            <Ionicons name="lock-closed" size={50} color={COLORS.primary} />
           </View>
-
           <Text style={styles.title}>¿Olvidaste tu contraseña?</Text>
-          
           <Text style={styles.subtitle}>
-            {resetSent 
-              ? 'Te hemos enviado las instrucciones para restablecer tu contraseña. Por favor revisa tu correo.'
-              : 'Ingresa tu correo electrónico y te enviaremos las instrucciones para restablecer tu contraseña.'}
+            Ingresa tu correo electrónico y te enviaremos las instrucciones para recuperar tu contraseña
           </Text>
+        </View>
 
-          {!resetSent && (
-            <>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  label="Correo electrónico"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  mode="outlined"
-                  left={<TextInput.Icon icon="email" />}
-                  style={styles.input}
-                  theme={{
-                    colors: {
-                      primary: COLORS.primary,
-                      background: COLORS.white,
-                    },
-                  }}
-                />
-              </View>
+        <View style={styles.form}>
+          <TextInput
+            mode="outlined"
+            label="Correo electrónico"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            style={styles.input}
+            disabled={isLoading}
+          />
 
-              <TouchableOpacity
-                style={styles.button}
-                onPress={handleResetPassword}
-              >
-                <Text style={styles.buttonText}>Enviar instrucciones</Text>
-              </TouchableOpacity>
-            </>
-          )}
+          <TouchableOpacity
+            style={[styles.resetButton, isLoading && styles.resetButtonDisabled]}
+            onPress={handleResetPassword}
+            disabled={isLoading}
+          >
+            <Text style={styles.resetButtonText}>
+              {isLoading ? 'Enviando...' : 'Enviar instrucciones'}
+            </Text>
+          </TouchableOpacity>
 
-          {resetSent && (
-            <>
-              <TouchableOpacity
-                style={styles.button}
-                onPress={() => navigation.navigate('Login')}
-              >
-                <Text style={styles.buttonText}>Volver al inicio de sesión</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.resendButton}
-                onPress={handleResetPassword}
-              >
-                <Text style={styles.resendButtonText}>Reenviar correo</Text>
-              </TouchableOpacity>
-            </>
-          )}
+          <TouchableOpacity
+            style={styles.loginLink}
+            onPress={handleNavigation}
+            disabled={isLoading}
+          >
+            <Text style={styles.loginLinkText}>Volver al inicio de sesión</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -121,66 +125,63 @@ const ForgotPasswordScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#ffffff',
   },
   scrollContent: {
     flexGrow: 1,
+    padding: 20,
   },
   backButton: {
-    padding: 20,
+    marginBottom: 20,
   },
-  content: {
-    flex: 1,
-    padding: 20,
+  header: {
     alignItems: 'center',
-    justifyContent: 'center',
+    marginBottom: 32,
   },
   iconContainer: {
-    marginBottom: 32,
-    alignItems: 'center',
+    marginBottom: 16,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: COLORS.text,
-    marginBottom: 16,
+    marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: COLORS.gray,
+    color: COLORS.gray[600],
     textAlign: 'center',
     marginBottom: 32,
-    paddingHorizontal: 20,
   },
-  inputContainer: {
+  form: {
     width: '100%',
-    marginBottom: 24,
   },
   input: {
+    marginBottom: 24,
     backgroundColor: COLORS.white,
   },
-  button: {
+  resetButton: {
     backgroundColor: COLORS.primary,
     paddingVertical: 16,
-    paddingHorizontal: 32,
     borderRadius: 12,
-    width: '100%',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 24,
   },
-  buttonText: {
+  resetButtonDisabled: {
+    opacity: 0.7,
+  },
+  resetButtonText: {
     color: COLORS.white,
     fontSize: 16,
     fontWeight: '600',
   },
-  resendButton: {
-    padding: 16,
+  loginLink: {
+    alignItems: 'center',
   },
-  resendButtonText: {
+  loginLinkText: {
     color: COLORS.primary,
     fontSize: 16,
-    fontWeight: '500',
   },
 });
 

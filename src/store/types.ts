@@ -4,8 +4,7 @@ export interface RootState {
   auth: {
     user: User | null;
     token: string | null;
-    isLoading: boolean;
-    error: string | null;
+    isAuthenticated: boolean;
   };
   // Otros estados aquí
 } 

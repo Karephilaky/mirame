@@ -1,25 +1,25 @@
 import { UserRole, ROLES } from '../types/database';
 
-export const getHomeScreenByRole = (role: UserRole): string => {
+export const getHomeScreenByRole = (role: string): string => {
   switch (role) {
-    case ROLES.ADMIN:
+    case '1':
       return 'AdminHome';
-    case ROLES.EMPLOYEE:
+    case '2':
       return 'EmployeeHome';
-    case ROLES.CLIENT:
+    case '3':
       return 'ClientHome';
     default:
-      return 'Login';
+      return 'ClientHome';
   }
 };
 
-export const getRoleMessage = (role: UserRole): string => {
+export const getRoleMessage = (role: string): string => {
   switch (role) {
-    case ROLES.ADMIN:
+    case '1':
       return '¡Bienvenido Administrador!';
-    case ROLES.EMPLOYEE:
-      return '¡Bienvenido al portal de empleados!';
-    case ROLES.CLIENT:
+    case '2':
+      return '¡Bienvenido Empleado!';
+    case '3':
       return '¡Bienvenido a Mírame!';
     default:
       return '¡Bienvenido!';

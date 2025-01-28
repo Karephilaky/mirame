@@ -1,68 +1,38 @@
 import React from 'react';
-import { View } from 'react-native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store/types';
-import { ROLES } from '../types/database';
-import { MainTabParamList } from './types';
-import DevMenu from '../components/DevMenu';
+import AuthNavigator from './stacks/AuthNavigator';
+import { ClientTabNavigator, EmployeeTabNavigator, AdminTabNavigator } from './tabs/TabNavigators';
+import { RootStackParamList } from './types';
 
-import {
-  HomeStackNavigator,
-  AuthNavigator,
-  ServiceStackNavigator,
-  AppointmentStackNavigator,
-  ClientStackNavigator,
-  EmployeeStackNavigator,
-  ReportStackNavigator,
-  ProfileStackNavigator
-} from './';
-
-const Tab = createBottomTabNavigator<MainTabParamList>();
+// Navegadores
+const Stack = createStackNavigator<RootStackParamList>();
 
 const AppNavigator = () => {
-  const { user, token } = useSelector((state: RootState) => state.auth);
-
-  if (!user || !token) {
-    return <AuthNavigator />;
-  }
+  const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
 
   return (
-    <View style={{ flex: 1 }}>
-      <Tab.Navigator
-        screenOptions={{
-          headerShown: false,
-          // ... otras opciones
-        }}
-      >
-        <Tab.Screen name="Home" component={HomeStackNavigator} />
-        
-        {user.id_rol === ROLES.ADMIN && (
+    <NavigationContainer>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {!isAuthenticated ? (
+          <Stack.Screen name="Auth" component={AuthNavigator} />
+        ) : (
           <>
-            <Tab.Screen name="Services" component={ServiceStackNavigator} />
-            <Tab.Screen name="AdminEmployees" component={EmployeeStackNavigator} />
-            <Tab.Screen name="AdminReports" component={ReportStackNavigator} />
+            {user?.id_rol === '3' && (
+              <Stack.Screen name="ClientTabs" component={ClientTabNavigator} />
+            )}
+            {user?.id_rol === '2' && (
+              <Stack.Screen name="EmployeeTabs" component={EmployeeTabNavigator} />
+            )}
+            {user?.id_rol === '1' && (
+              <Stack.Screen name="AdminTabs" component={AdminTabNavigator} />
+            )}
           </>
         )}
-
-        {user.id_rol === ROLES.EMPLOYEE && (
-          <>
-            <Tab.Screen name="Appointments" component={AppointmentStackNavigator} />
-            <Tab.Screen name="EmployeeClients" component={ClientStackNavigator} />
-          </>
-        )}
-
-        {user.id_rol === ROLES.CLIENT && (
-          <>
-            <Tab.Screen name="ClientAppointments" component={AppointmentStackNavigator} />
-            <Tab.Screen name="Services" component={ServiceStackNavigator} />
-          </>
-        )}
-
-        <Tab.Screen name="Profile" component={ProfileStackNavigator} />
-      </Tab.Navigator>
-      {__DEV__ && <DevMenu />}
-    </View>
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 };
 

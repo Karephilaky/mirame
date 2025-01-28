@@ -1,68 +1,57 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
+import { API_CONFIG } from './constants';
 
 const getBaseUrl = () => {
   if (__DEV__) {
-    if (Platform.OS === 'android') {
-      // Para emulador Android - usa tu IP local real
-      return 'http://192.168.100.129:3000';
-    } else {
-      // Para iOS
-      return 'http://localhost:3000';
-    }
+    return Platform.OS === 'android' 
+      ? 'http://10.0.2.2:3000/api'
+      : 'http://localhost:3000/api';
   }
-  return 'https://tu-url-produccion.com';
+  return API_CONFIG.BASE_URL;
 };
 
-const baseURL = getBaseUrl();
-console.log('Base URL configurada:', baseURL);
-
 const axiosInstance = axios.create({
-  baseURL,
-  timeout: 30000, // Aumentamos el timeout a 30 segundos
+  baseURL: getBaseUrl(),
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  }
+  },
 });
 
-// Interceptor para logs
+// Interceptores
 axiosInstance.interceptors.request.use(
   (config) => {
-    console.log('\n--- Iniciando Petición ---');
-    console.log('URL:', config.url);
-    console.log('Método:', config.method?.toUpperCase());
-    console.log('Headers:', config.headers);
-    if (config.data) {
-      const logData = { ...config.data };
-      if (logData.password) logData.password = '***';
-      console.log('Datos:', logData);
+    if (__DEV__) {
+      console.log('Request:', {
+        url: config.url,
+        method: config.method,
+        data: config.data,
+      });
     }
     return config;
   },
   (error) => {
-    console.error('Error en la petición:', error);
     return Promise.reject(error);
   }
 );
 
 axiosInstance.interceptors.response.use(
   (response) => {
-    console.log('\n--- Respuesta Recibida ---');
-    console.log('Status:', response.status);
-    console.log('Datos:', response.data);
+    if (__DEV__) {
+      console.log('Response:', {
+        status: response.status,
+        data: response.data,
+      });
+    }
     return response;
   },
   (error) => {
-    console.log('\n--- Error en la Petición ---');
-    if (error.response) {
-      console.error('Status:', error.response.status);
-      console.error('Datos:', error.response.data);
-    } else if (error.request) {
-      console.error('No se recibió respuesta del servidor');
-      console.error('Error:', error.message);
-    } else {
-      console.error('Error:', error.message);
+    if (__DEV__) {
+      console.error('API Error:', {
+        message: error.message,
+        response: error.response?.data,
+      });
     }
     return Promise.reject(error);
   }

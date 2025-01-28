@@ -1,10 +1,29 @@
-export const API_URL = 'http://localhost:3000/api'; // Cambia esto según tu API
+export * from './constants';
+export * from './axios';
+
+// Configuración centralizada
+export const CONFIG = {
+  api: {
+    baseUrl: process.env.API_URL || 'http://localhost:3000/api',
+    timeout: 15000,
+  },
+  app: {
+    name: 'Mírame',
+    version: '1.0.0',
+  },
+  storage: {
+    keys: {
+      authToken: '@auth_token',
+      userData: '@user_data',
+    }
+  }
+};
 
 export const API_ENDPOINTS = {
-  services: `${API_URL}/services`,
-  clients: `${API_URL}/clients`,
-  appointments: `${API_URL}/appointments`,
-  auth: `${API_URL}/auth`,
+  services: `${CONFIG.api.baseUrl}/services`,
+  clients: `${CONFIG.api.baseUrl}/clients`,
+  appointments: `${CONFIG.api.baseUrl}/appointments`,
+  auth: `${CONFIG.api.baseUrl}/auth`,
 } as const;
 
 export const APP_CONFIG = {

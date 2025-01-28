@@ -1,109 +1,222 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
   RefreshControl,
+  Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../styles/common';
 import { useNavigation } from '@react-navigation/native';
 import { HomeScreenNavigationProp } from '../../navigation/types';
-import { useAppSelector } from '../../hooks/useRedux';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { Servicio, Empleado, Cita } from '../../types/database';
+import { Card } from '../../components/common/Card';
+import { useAppSelector, useAppDispatch } from '../../hooks/useRedux';
+import { servicesApi } from '../../services/api/services.service';
+import { employeesApi } from '../../services/api/employees.service';
+import { appointmentsApi } from '../../services/api/appointments.service';
+import { fetchServices } from '../../store/slices/servicesSlice';
+import { Appointment } from '../../types/api.types';
 
-const ClientHomeScreen: React.FC = () => {
+const ClientHomeScreen = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
+  const dispatch = useAppDispatch();
   const { user } = useAppSelector(state => state.auth);
-  const { appointments } = useAppSelector(state => state.appointments);
-  const [refreshing, setRefreshing] = React.useState(false);
+  const { items: services } = useAppSelector(state => state.services);
 
-  const myAppointments = appointments.filter(app => app.id_cliente === user?.id);
-  const upcomingAppointments = myAppointments.filter(
-    app => new Date(app.fecha) >= new Date()
-  );
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [employees, setEmployees] = useState<Empleado[]>([]);
+  const [nextAppointment, setNextAppointment] = useState<Appointment | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadData = async () => {
+    try {
+      setError(null);
+      setLoading(true);
+
+      // Cargar servicios usando Redux
+      await dispatch(fetchServices()).unwrap();
+
+      // Cargar empleados
+      const employeesResponse = await employeesApi.getEmployees();
+      setEmployees(employeesResponse);
+
+      // Cargar próxima cita del cliente
+      if (user?.id) {
+        const appointments = await appointmentsApi.getUserAppointments(user.id.toString());
+        const upcoming = appointments.find(cita => 
+          new Date(cita.date) >= new Date() && 
+          ['pending', 'confirmed'].includes(cita.status)
+        );
+        setNextAppointment(upcoming || null);
+      }
+    } catch (err) {
+      console.error('Error al cargar datos:', err);
+      setError('Error al cargar los datos. Por favor, intenta de nuevo.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    // Aquí irían las llamadas para recargar los datos
+    await loadData();
     setRefreshing(false);
   };
 
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleBookAppointment = () => {
+    if (!services.length) {
+      Alert.alert('No hay servicios disponibles', 'Por favor, intenta más tarde.');
+      return;
+    }
+    if (!employees.length) {
+      Alert.alert('No hay profesionales disponibles', 'Por favor, intenta más tarde.');
+      return;
+    }
+    navigation.navigate('ServiceList');
+  };
+
+  const renderServiceCard = (service: Servicio) => {
+    // Asegurarse de que el ID sea un string al navegar
+    const serviceId = typeof service.id === 'number' ? service.id.toString() : service.id;
+    
+    return (
+      <TouchableOpacity 
+        key={serviceId}
+        style={styles.serviceCard}
+        onPress={() => navigation.navigate('ServiceDetail', { 
+          id: service.id.toString()
+        })}
+      >
+        <Text style={styles.serviceName}>{service.nombre}</Text>
+        <Text style={styles.servicePrice}>
+          ${service.precio.toFixed(2)}
+        </Text>
+        <Text style={styles.serviceDuration}>
+          {service.duracion} minutos
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.button} onPress={loadData}>
+          <Text style={styles.buttonText}>Reintentar</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
-    <ScrollView
+    <ScrollView 
       style={styles.container}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
+      {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>¡Hola!</Text>
-          <Text style={styles.userName}>{user?.nombre}</Text>
+          <Text style={styles.greeting}>¡Hola, {user?.name?.split(' ')[0]}!</Text>
         </View>
-        <TouchableOpacity
+        <TouchableOpacity 
           style={styles.profileButton}
           onPress={() => navigation.navigate('Profile')}
         >
-          <Ionicons name="person-circle-outline" size={40} color={COLORS.primary} />
+          <Ionicons name="person-circle-outline" size={40} color={COLORS.white} />
         </TouchableOpacity>
       </View>
 
-      {/* Próxima cita */}
-      <View style={styles.section}>
+      {/* Próxima Cita */}
+      <Card style={styles.section}>
         <Text style={styles.sectionTitle}>Tu Próxima Cita</Text>
-        {upcomingAppointments.length > 0 ? (
-          <View style={styles.nextAppointmentCard}>
-            <Text style={styles.dateText}>
-              {format(new Date(upcomingAppointments[0].fecha), 'EEEE d MMMM', { locale: es })}
-            </Text>
-            <Text style={styles.timeText}>{upcomingAppointments[0].hora}</Text>
-            <Text style={styles.serviceText}>Servicio: {upcomingAppointments[0].id_servicio}</Text>
-            <TouchableOpacity
-              style={styles.viewButton}
-              onPress={() => navigation.navigate('AppointmentDetail', { 
-                appointmentId: upcomingAppointments[0].id 
+        {nextAppointment ? (
+          <View>
+            <Text style={styles.appointmentDate}>
+              {new Date(nextAppointment.date).toLocaleDateString('es-ES', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
               })}
-            >
-              <Text style={styles.viewButtonText}>Ver Detalles</Text>
-            </TouchableOpacity>
+            </Text>
+            <Text style={styles.appointmentTime}>Hora: {nextAppointment.time}</Text>
+            <Text style={styles.appointmentStatus}>
+              Estado: {nextAppointment.status.charAt(0).toUpperCase() + nextAppointment.status.slice(1)}
+            </Text>
           </View>
         ) : (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>No tienes citas programadas</Text>
-            <TouchableOpacity
-              style={styles.scheduleButton}
-              onPress={() => navigation.navigate('NewAppointment', {})}
+            <Text style={styles.emptyStateText}>
+              No tienes citas programadas
+            </Text>
+            <TouchableOpacity 
+              style={styles.button}
+              onPress={handleBookAppointment}
             >
-              <Text style={styles.scheduleButtonText}>Agendar Cita</Text>
+              <Text style={styles.buttonText}>Agendar Cita</Text>
             </TouchableOpacity>
           </View>
         )}
-      </View>
+      </Card>
 
-      {/* Acciones rápidas */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Acciones Rápidas</Text>
-        <View style={styles.quickActions}>
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: COLORS.primary }]}
-            onPress={() => navigation.navigate('NewAppointment', {})}
-          >
-            <Ionicons name="calendar" size={24} color={COLORS.white} />
-            <Text style={styles.actionText}>Nueva Cita</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: '#4ECDC4' }]}
-            onPress={() => navigation.navigate('Services')}
-          >
-            <Ionicons name="cut" size={24} color={COLORS.white} />
-            <Text style={styles.actionText}>Servicios</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      {/* Servicios */}
+      <Card style={styles.section}>
+        <Text style={styles.sectionTitle}>Servicios Disponibles</Text>
+        {services.length > 0 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {services.map(service => renderServiceCard(service))}
+          </ScrollView>
+        ) : (
+          <Text style={styles.emptyStateText}>
+            No hay servicios disponibles en este momento
+          </Text>
+        )}
+      </Card>
+
+      {/* Profesionales */}
+      <Card style={styles.section}>
+        <Text style={styles.sectionTitle}>Nuestros Profesionales</Text>
+        {employees.length > 0 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {employees.map(empleado => (
+              <View key={empleado.id} style={styles.employeeCard}>
+                <View style={styles.employeeAvatar}>
+                  <Ionicons name="person" size={30} color={COLORS.gray} />
+                </View>
+                <Text style={styles.employeeName}>{empleado.nombre}</Text>
+                <Text style={styles.employeeSpecialty}>
+                  {empleado.especialidad}
+                </Text>
+              </View>
+            ))}
+          </ScrollView>
+        ) : (
+          <Text style={styles.emptyStateText}>
+            No hay profesionales disponibles en este momento
+          </Text>
+        )}
+      </Card>
     </ScrollView>
   );
 };
@@ -113,108 +226,119 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.primary,
   },
   greeting: {
-    fontSize: 16,
-    color: COLORS.gray,
-  },
-  userName: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: COLORS.text,
+    color: COLORS.white,
   },
   profileButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    padding: 5,
   },
   section: {
-    padding: 20,
+    margin: 15,
+    padding: 15,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: 16,
-  },
-  nextAppointmentCard: {
-    backgroundColor: COLORS.white,
-    padding: 20,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  dateText: {
     fontSize: 18,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 8,
-  },
-  timeText: {
-    fontSize: 24,
     fontWeight: 'bold',
-    color: COLORS.primary,
-    marginBottom: 8,
+    marginBottom: 15,
+    color: COLORS.text,
   },
-  serviceText: {
-    fontSize: 16,
-    color: COLORS.gray,
-    marginBottom: 16,
+  serviceCard: {
+    backgroundColor: COLORS.white,
+    padding: 15,
+    borderRadius: 10,
+    marginRight: 10,
+    width: 150,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  viewButton: {
-    backgroundColor: COLORS.primary,
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  viewButtonText: {
-    color: COLORS.white,
+  serviceName: {
     fontSize: 16,
     fontWeight: '500',
+    marginBottom: 5,
+  },
+  servicePrice: {
+    fontSize: 14,
+    color: COLORS.primary,
+    fontWeight: 'bold',
+  },
+  serviceDuration: {
+    fontSize: 12,
+    color: COLORS.gray,
+    marginTop: 5,
+  },
+  employeeCard: {
+    alignItems: 'center',
+    marginRight: 20,
+  },
+  employeeAvatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: COLORS.gray,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  employeeName: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  employeeSpecialty: {
+    fontSize: 12,
+    color: COLORS.gray,
   },
   emptyState: {
     alignItems: 'center',
-    padding: 32,
+    padding: 20,
   },
-  emptyText: {
+  emptyStateText: {
     color: COLORS.gray,
-    fontSize: 16,
-    marginBottom: 16,
+    textAlign: 'center',
+    marginBottom: 10,
   },
-  scheduleButton: {
+  button: {
     backgroundColor: COLORS.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 5,
   },
-  scheduleButtonText: {
+  buttonText: {
     color: COLORS.white,
-    fontSize: 16,
     fontWeight: '500',
   },
-  quickActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  actionText: {
-    color: COLORS.white,
+  appointmentDate: {
     fontSize: 16,
-    fontWeight: '500',
+    marginBottom: 5,
+  },
+  appointmentTime: {
+    fontSize: 14,
+    color: COLORS.gray,
+  },
+  appointmentStatus: {
+    fontSize: 14,
+    color: COLORS.gray,
+  },
+  errorText: {
+    color: COLORS.error,
+    textAlign: 'center',
+    margin: 15,
   },
 });
 

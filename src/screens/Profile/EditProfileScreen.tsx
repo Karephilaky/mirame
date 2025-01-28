@@ -12,9 +12,15 @@ import {
   Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../../styles/common';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { ProfileStackParamList } from '../../navigation/types';
+import { useForm, Controller } from 'react-hook-form';
+import { useAppDispatch, useAppSelector } from '../../hooks/useRedux';
+import { updateProfile } from '../../store/slices/profileSlice';
+import { Input } from '../../components/common/Input';
+import { Button } from '../../components/common/Button';
+import { UpdateUserDto } from '../../services/api/users.service';
+import { COLORS } from '../../styles/common';
 
 interface ProfileFormData {
   id: string;
@@ -31,30 +37,39 @@ type EditProfileScreenNavigationProp = NavigationProp<ProfileStackParamList>;
 
 const EditProfileScreen = () => {
   const navigation = useNavigation<EditProfileScreenNavigationProp>();
-  
-  const [formData, setFormData] = useState<ProfileFormData>({
-    id: '1', // Este ID vendría del usuario autenticado
-    nombre: 'Ana María López',
-    email: 'ana.lopez@example.com',
-    telefono: '+593 98 765 4321',
-    id_rol: '1', // ID del rol correspondiente
+  const dispatch = useAppDispatch();
+  const { user } = useAppSelector(state => state.auth);
+  const { loading = false } = useAppSelector((state) => state.profile) || {};
+
+  const { control, handleSubmit, formState: { errors } } = useForm<UpdateUserDto>({
+    defaultValues: {
+      name: user?.name || '',
+      email: user?.email || '',
+      telefono: user?.telefono || '',
+    }
   });
 
-  const handleSave = async () => {
+  const avatarText = user?.name?.split(' ').map((n: string) => n[0]).join('');
+
+  const onSubmit = async (data: UpdateUserDto) => {
+    if (!user?.id) {
+      Alert.alert('Error', 'No se pudo identificar al usuario');
+      return;
+    }
+
     try {
-      // Aquí iría la lógica para actualizar el usuario en la base de datos
-      // Ejemplo de estructura SQL:
-      // UPDATE users 
-      // SET nombre = ?, email = ?, telefono = ?, actualizado_en = CURRENT_TIMESTAMP
-      // WHERE id = ?
+      await dispatch(updateProfile({ 
+        userId: user.id, 
+        data 
+      })).unwrap();
       
-      Alert.alert(
-        'Éxito',
-        'Los cambios han sido guardados',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+      Alert.alert('Éxito', 'Perfil actualizado correctamente');
+      navigation.goBack();
     } catch (error) {
-      Alert.alert('Error', 'No se pudieron guardar los cambios');
+      Alert.alert(
+        'Error', 
+        typeof error === 'string' ? error : 'Error al actualizar el perfil'
+      );
     }
   };
 
@@ -83,7 +98,7 @@ const EditProfileScreen = () => {
         <Text style={styles.headerTitle}>Editar Perfil</Text>
         <TouchableOpacity 
           style={styles.saveButton}
-          onPress={handleSave}
+          onPress={handleSubmit(onSubmit)}
         >
           <Text style={styles.saveButtonText}>Guardar</Text>
         </TouchableOpacity>
@@ -95,15 +110,15 @@ const EditProfileScreen = () => {
       >
         <View style={styles.imageSection}>
           <View style={styles.avatarContainer}>
-            {formData.imagen ? (
+            {user?.imagen ? (
               <Image 
-                source={{ uri: formData.imagen }}
+                source={{ uri: user.imagen }}
                 style={styles.avatar}
               />
             ) : (
               <View style={[styles.avatar, styles.avatarPlaceholder]}>
                 <Text style={styles.avatarText}>
-                  {formData.nombre.split(' ').map(n => n[0]).join('')}
+                  {avatarText}
                 </Text>
               </View>
             )}
@@ -118,38 +133,60 @@ const EditProfileScreen = () => {
         </View>
 
         <View style={styles.form}>
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Nombre completo</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.nombre}
-              onChangeText={(text) => setFormData({ ...formData, nombre: text })}
-              placeholder="Ingresa tu nombre"
-            />
-          </View>
+          <Controller
+            control={control}
+            name="name"
+            rules={{ required: 'El nombre es requerido' }}
+            render={({ field: { onChange, value } }) => (
+              <Input
+                label="Nombre"
+                value={value}
+                onChangeText={onChange}
+                error={errors.name?.message}
+              />
+            )}
+          />
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Correo electrónico</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.email}
-              onChangeText={(text) => setFormData({ ...formData, email: text })}
-              placeholder="Ingresa tu correo"
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
+          <Controller
+            control={control}
+            name="email"
+            rules={{ 
+              required: 'El email es requerido',
+              pattern: {
+                value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                message: 'Email inválido'
+              }
+            }}
+            render={({ field: { onChange, value } }) => (
+              <Input
+                label="Email"
+                value={value}
+                onChangeText={onChange}
+                keyboardType="email-address"
+                error={errors.email?.message}
+              />
+            )}
+          />
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Teléfono</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.telefono}
-              onChangeText={(text) => setFormData({ ...formData, telefono: text })}
-              placeholder="Ingresa tu teléfono"
-              keyboardType="phone-pad"
-            />
-          </View>
+          <Controller
+            control={control}
+            name="telefono"
+            render={({ field: { onChange, value } }) => (
+              <Input
+                label="Teléfono"
+                value={value}
+                onChangeText={onChange}
+                keyboardType="phone-pad"
+                error={errors.telefono?.message}
+              />
+            )}
+          />
+
+          <Button
+            title="Guardar cambios"
+            onPress={handleSubmit(onSubmit)}
+            loading={loading}
+          />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

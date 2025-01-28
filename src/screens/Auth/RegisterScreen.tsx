@@ -14,13 +14,17 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, commonStyles } from '../../styles/common';
 import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { useDispatch } from 'react-redux';
 import { setUser, setToken } from '../../store/slices/authSlice';
-import authApi from '../../api/auth';
+import { authApi } from '../../services/api/auth.service';
 import { User, UserRole, ROLES } from '../../types/database';
+import { RootStackParamList } from '../../navigation/types';
+
+type AuthNavigationProp = StackNavigationProp<RootStackParamList>;
 
 const RegisterScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<AuthNavigationProp>();
   const dispatch = useDispatch();
   
   const [loading, setLoading] = useState(false);
@@ -34,8 +38,13 @@ const RegisterScreen = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   const handleRegister = async () => {
-    if (!formData.name || !formData.email || !formData.password) {
-      Alert.alert('Error', 'Por favor completa todos los campos requeridos');
+    if (!formData.name.trim() || !formData.email.trim() || !formData.password.trim()) {
+      Alert.alert('Error', 'Por favor completa todos los campos obligatorios');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
       return;
     }
 
@@ -51,38 +60,32 @@ const RegisterScreen = () => {
         name: formData.name.trim(),
         email: formData.email.toLowerCase().trim(),
         password: formData.password,
-        phone: formData.telefono.trim() || undefined,
-        role: 'client'
+        phone: formData.telefono?.trim(),
+        role: 'client',
+        id_rol: ROLES.CLIENT
       };
 
-      await authApi.register(registerData);
-      const loginResponse = await authApi.login(registerData.email, registerData.password);
+      const success = await authApi.register(registerData);
 
-      const userRole = ROLES.CLIENT; // Siempre será cliente en el registro
+      if (success) {
+        const loginResponse = await authApi.login(registerData.email, registerData.password);
 
-      dispatch(setUser({
-        id: String(loginResponse.user.id),
-        nombre: loginResponse.user.name,
-        email: loginResponse.user.email,
-        telefono: '',
-        id_rol: userRole,
-        creado_en: new Date(),
-        actualizado_en: new Date()
-      }));
+        dispatch(setUser({
+          id: loginResponse.user.id,
+          name: loginResponse.user.name,
+          email: loginResponse.user.email,
+          telefono: loginResponse.user.telefono || '',
+          id_rol: ROLES.CLIENT,
+          role: 'client',
+          creado_en: new Date(),
+          actualizado_en: new Date()
+        }));
 
-      if (loginResponse.token) {
-        dispatch(setToken(loginResponse.token));
-        
-        Alert.alert(
-          '¡Registro Exitoso!',
-          'Bienvenido a Mírame. Tu cuenta ha sido creada correctamente.',
-          [
-            { 
-              text: 'Continuar',
-              onPress: () => navigation.navigate('ClientHome' as never)
-            }
-          ]
-        );
+        if (loginResponse.token) {
+          dispatch(setToken(loginResponse.token));
+          
+          navigation.replace('ClientTabs', { screen: 'Home' });
+        }
       }
     } catch (error) {
       Alert.alert(

@@ -10,8 +10,8 @@ import {
   StatusBar,
   Platform
 } from 'react-native';
-import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
-import { AppointmentStackParamList, AppointmentScreenNavigationProp } from '../../navigation/types';
+import { useNavigation } from '@react-navigation/native';
+import { ClientScreenNavigationProp } from '../../navigation/types';
 import { Ionicons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
 import { COLORS, commonStyles } from '../../styles/common';
@@ -22,8 +22,6 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useAppDispatch, useAppSelector } from '../../hooks/useRedux';
 import { Cliente, Servicio } from '../../types/database';
-
-type NewAppointmentRouteProp = RouteProp<AppointmentStackParamList, 'NewAppointment'>;
 
 interface Service {
   id: string;
@@ -41,8 +39,7 @@ interface AppointmentForm {
 }
 
 const NewAppointmentScreen: React.FC = () => {
-  const route = useRoute<NewAppointmentRouteProp>();
-  const navigation = useNavigation<AppointmentScreenNavigationProp>();
+  const navigation = useNavigation<ClientScreenNavigationProp>();
   const dispatch = useAppDispatch();
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -64,46 +61,30 @@ const NewAppointmentScreen: React.FC = () => {
   const selectedTime = watch('time');
 
   useEffect(() => {
-    if (route.params?.appointmentId) {
-      // Cargar datos de la cita si estamos editando
-      loadAppointmentData();
-    }
-  }, [route.params?.appointmentId]);
+    loadInitialData();
+  }, []);
 
-  const loadAppointmentData = async () => {
+  const loadInitialData = async () => {
     setLoading(true);
     try {
-      // Aquí cargaríamos los datos de la cita desde la API
-      // const appointment = await getAppointmentById(route.params.appointmentId);
-      // setValue('clientId', appointment.clientId);
-      // etc...
+      // Cargar datos iniciales necesarios
     } catch (error) {
-      Alert.alert('Error', 'No se pudo cargar la información de la cita');
+      Alert.alert('Error', 'No se pudieron cargar los datos iniciales');
     } finally {
       setLoading(false);
     }
   };
 
-  const onSubmit = async (data: AppointmentForm) => {
-    if (!selectedClient || !selectedService) {
-      Alert.alert('Error', 'Por favor selecciona un cliente y un servicio');
-      return;
-    }
-
-    setLoading(true);
+  const onSubmitForm = async (data: AppointmentForm) => {
     try {
-      // Aquí iría la lógica para crear/actualizar la cita
-      // const response = await createAppointment(data);
-      // dispatch(addAppointment(response.data));
+      // Lógica para crear la cita
       Alert.alert(
         'Éxito',
         'Cita creada correctamente',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
+        [{ text: 'OK', onPress: () => navigation.navigate('AppointmentList') }]
       );
     } catch (error) {
       Alert.alert('Error', 'No se pudo crear la cita');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -147,8 +128,8 @@ const NewAppointmentScreen: React.FC = () => {
     }, 0);
   };
 
-  const handleSelectClient = () => {
-    navigation.navigate('ClientDetail', { clientId: '' });
+  const handleClientSelect = () => {
+    navigation.navigate('Profile');
   };
 
   const handleSelectService = () => {
@@ -196,7 +177,7 @@ const NewAppointmentScreen: React.FC = () => {
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.title}>
-          {route.params?.appointmentId ? 'Editar Cita' : 'Nueva Cita'}
+          {/* route.params?.appointmentId ? 'Editar Cita' : 'Nueva Cita' */}
         </Text>
       </View>
 
@@ -205,7 +186,7 @@ const NewAppointmentScreen: React.FC = () => {
           <Text style={styles.sectionTitle}>Cliente</Text>
           <TouchableOpacity
             style={styles.clientSelector}
-            onPress={handleSelectClient}
+            onPress={handleClientSelect}
           >
             {selectedClient ? (
               <View>
@@ -311,11 +292,11 @@ const NewAppointmentScreen: React.FC = () => {
         </View>
         <TouchableOpacity
           style={[styles.submitButton, (!selectedClient || !selectedService) && styles.buttonDisabled]}
-          onPress={handleSubmit(onSubmit)}
+          onPress={handleSubmit(onSubmitForm)}
           disabled={loading || !selectedClient || !selectedService}
         >
           <Text style={styles.submitButtonText}>
-            {route.params?.appointmentId ? 'Actualizar Cita' : 'Crear Cita'}
+            {/* route.params?.appointmentId ? 'Actualizar Cita' : 'Crear Cita' */}
           </Text>
         </TouchableOpacity>
       </View>

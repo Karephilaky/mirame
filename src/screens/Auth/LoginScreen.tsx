@@ -13,17 +13,21 @@ import {
 import { TextInput } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../styles/common';
-import { useNavigation, NavigationProp } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { AuthStackParamList } from '../../navigation/types';
 import { useDispatch } from 'react-redux';
 import { setUser, setToken } from '../../store/slices/authSlice';
-import authApi from '../../api/auth';
+import authApi from '../../services/api/auth.service';
 import { UserRole } from '../../types/database';
 import { ROLES } from '../../types/database';
 import { getHomeScreenByRole, getRoleMessage } from '../../utils/roleNavigation';
+import { AuthNavigationProp } from '../../navigation/types';
+
+type LoginScreenNavigationProp = StackNavigationProp<AuthStackParamList>;
 
 const LoginScreen: React.FC = () => {
-  const navigation = useNavigation<NavigationProp<AuthStackParamList>>();
+  const navigation = useNavigation<LoginScreenNavigationProp>();
   const dispatch = useDispatch();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -45,12 +49,11 @@ const LoginScreen: React.FC = () => {
       const userRole = response.user.role === 'client' ? ROLES.CLIENT : 
                       response.user.role === 'admin' ? ROLES.ADMIN : 
                       ROLES.EMPLOYEE;
-
       dispatch(setUser({
-        id: String(response.user.id),
-        nombre: response.user.name,
+        id: response.user.id,
+        name: response.user.name,
         email: response.user.email,
-        telefono: '',
+        telefono: response.user.telefono || '',
         id_rol: userRole,
         creado_en: new Date(),
         actualizado_en: new Date()
@@ -59,17 +62,14 @@ const LoginScreen: React.FC = () => {
       if (response.token) {
         dispatch(setToken(response.token));
         
-        // Mostrar mensaje de bienvenida según el rol
-        Alert.alert(
-          'Inicio de Sesión Exitoso',
-          getRoleMessage(userRole),
-          [
-            { 
-              text: 'Continuar',
-              onPress: () => navigation.navigate(getHomeScreenByRole(userRole) as never)
-            }
-          ]
-        );
+        // Después de un login exitoso, navegar según el rol
+        if (response.user.role === 'client') {
+          navigation.replace('ClientTabs' as any);
+        } else if (response.user.role === 'employee') {
+          navigation.replace('EmployeeTabs' as any);
+        } else if (response.user.role === 'admin') {
+          navigation.replace('AdminTabs' as any);
+        }
       }
     } catch (error) {
       Alert.alert(
@@ -95,6 +95,14 @@ const LoginScreen: React.FC = () => {
   useEffect(() => {
     testConnection();
   }, []);
+
+  const handleForgotPassword = () => {
+    navigation.navigate('ForgotPassword' as keyof AuthStackParamList);
+  };
+
+  const handleRegister = () => {
+    navigation.navigate('Register' as keyof AuthStackParamList);
+  };
 
   return (
     <KeyboardAvoidingView 
@@ -139,7 +147,7 @@ const LoginScreen: React.FC = () => {
 
           <TouchableOpacity
             style={styles.forgotPassword}
-            onPress={() => navigation.navigate('ForgotPassword')}
+            onPress={handleForgotPassword}
             disabled={isLoading}
           >
             <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
@@ -163,7 +171,7 @@ const LoginScreen: React.FC = () => {
 
           <TouchableOpacity
             style={styles.registerButton}
-            onPress={() => navigation.navigate('Register')}
+            onPress={handleRegister}
             disabled={isLoading}
           >
             <Text style={styles.registerButtonText}>Crear cuenta</Text>
@@ -181,7 +189,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    padding: 20,
+    padding: 24,
+    paddingTop: 60,
   },
   logoContainer: {
     alignItems: 'center',
@@ -193,24 +202,39 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
+    backgroundColor: COLORS.background,
+    borderRadius: 60,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   appName: {
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: 'bold',
     color: COLORS.primary,
+    letterSpacing: 1,
   },
   form: {
     width: '100%',
   },
   input: {
     marginBottom: 16,
+    backgroundColor: COLORS.white,
   },
   forgotPassword: {
     alignSelf: 'flex-end',
     marginBottom: 24,
+    padding: 4,
   },
   forgotPasswordText: {
     color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: '500',
   },
   loginButton: {
     backgroundColor: COLORS.primary,
@@ -218,6 +242,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     marginBottom: 24,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
   },
   loginButtonDisabled: {
     opacity: 0.7,
@@ -226,11 +258,13 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: 16,
     fontWeight: '600',
+    letterSpacing: 0.5,
   },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 24,
+    marginTop: 8,
   },
   dividerLine: {
     flex: 1,
@@ -240,19 +274,21 @@ const styles = StyleSheet.create({
   dividerText: {
     color: COLORS.gray,
     paddingHorizontal: 16,
+    fontSize: 14,
   },
   registerButton: {
     backgroundColor: COLORS.white,
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: COLORS.primary,
   },
   registerButtonText: {
     color: COLORS.primary,
     fontSize: 16,
     fontWeight: '600',
+    letterSpacing: 0.5,
   },
 });
 

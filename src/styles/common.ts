@@ -7,13 +7,15 @@ export const COLORS = {
   white: '#FFFFFF',
   text: '#000000',
   gray: '#757575',
-  border: '#E0E0E0',
   error: '#B00020',
-  success: '#4CAF50',
-  disabled: '#C7C7CC',
+  disabled: '#CCCCCC',
+  border: '#E0E0E0',
+  success: '#28A745',
   warning: '#FFC107',
-  info: '#2196F3',
+  info: '#17A2B8',
   danger: '#DC3545',
+  lightGray: '#E0E0E0',
+  darkGray: '#424242',
 } as const;
 
 export const commonStyles = StyleSheet.create({

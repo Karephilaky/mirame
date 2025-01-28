@@ -18,66 +18,59 @@ import { TextInput } from 'react-native-paper';
 import { useForm, Controller } from 'react-hook-form';
 import { ServiceStackParamList } from '../../navigation/types';
 import { useAppDispatch } from '../../hooks/useRedux';
-import { addService, updateService } from '../../store/slices/servicesSlice';
+import { 
+  createService, 
+  updateService 
+} from '../../store/slices/servicesSlice';
 import { Servicio, CATEGORIAS_SERVICIOS } from '../../types/database';
-import servicesApi from '../../api/services';
+import servicesApi from '../../services/api/api/services';
 import { useLoading } from '../../hooks/useLoading';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { ServiceFormData } from '../../types/forms';
 
-type ServiceFormRouteProp = RouteProp<ServiceStackParamList, 'ServiceForm'>;
+type ServiceFormScreenProps = NativeStackScreenProps<ServiceStackParamList, 'ServiceForm'>;
 
-interface ServiceFormData {
-  nombre: string;
-  descripcion: string;
-  duracion: string;
-  precio: string;
-  activo: boolean;
-  categoria: string;
-}
-
-const defaultFormValues: ServiceFormData = {
-  nombre: '',
-  descripcion: '',
-  duracion: '',
-  precio: '',
-  activo: true,
-  categoria: '8', // Otros por defecto
-};
-
-const ServiceFormScreen: React.FC = () => {
-  const route = useRoute<ServiceFormRouteProp>();
-  const navigation = useNavigation();
+const ServiceFormScreen: React.FC<ServiceFormScreenProps> = ({ route, navigation }) => {
   const dispatch = useAppDispatch();
   const { withLoading, loading } = useLoading();
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const isEditing = route.params?.serviceId != null;
+  const { serviceId } = route.params || {};
+  const [isLoading, setIsLoading] = useState(false);
 
   const { control, handleSubmit, setValue, watch, formState: { errors } } = useForm<ServiceFormData>({
-    defaultValues: defaultFormValues
+    defaultValues: {
+      nombre: '',
+      descripcion: '',
+      duracion: 30,
+      precio: 0,
+      activo: true,
+      categoria_id: 8,
+    }
   });
 
-  const selectedCategoria = watch('categoria');
+  const [selectedCategoria, setSelectedCategoria] = useState<number>(8);
 
   useEffect(() => {
-    if (isEditing) {
+    if (serviceId) {
       loadServiceData();
     }
-  }, [isEditing]);
+  }, [serviceId]);
 
   const loadServiceData = async () => {
-    if (!route.params?.serviceId) return;
-
+    if (!serviceId) return;
+    
     const service = await withLoading(
-      () => servicesApi.getById(route.params.serviceId!),
+      () => servicesApi.getServiceById(serviceId.toString()),
       'No se pudo cargar la información del servicio'
     );
-    
+
     if (service) {
       setValue('nombre', service.nombre);
       setValue('descripcion', service.descripcion);
       setValue('duracion', service.duracion);
-      setValue('precio', service.precio.toString());
+      setValue('precio', Number(service.precio));
       setValue('activo', service.activo);
-      setValue('categoria', service.categoria);
+      setValue('categoria_id', Number(service.categoria_id));
     }
   };
 
@@ -89,79 +82,80 @@ const ServiceFormScreen: React.FC = () => {
     return true;
   };
 
-  const onSubmit = async (data: ServiceFormData) => {
-    const serviceData: Partial<Servicio> = {
-      ...data,
-      precio: parseFloat(data.precio),
-    };
+  const validateDuracion = (value: string) => {
+    const duracion = Number(value);
+    return !isNaN(duracion) && duracion >= 15 && duracion <= 180;
+  };
 
+  const validatePrecio = (value: string) => {
+    const precio = Number(value);
+    return !isNaN(precio) && precio > 0 && precio <= 1000;
+  };
+
+  const onSubmit = async (data: ServiceFormData) => {
     try {
-      if (isEditing && route.params?.serviceId) {
-        const updatedService = await withLoading(
-          () => servicesApi.update(route.params.serviceId!, serviceData),
-          'No se pudo actualizar el servicio'
-        );
-        if (updatedService) {
-          dispatch(updateService(updatedService));
-          navigation.goBack();
-        }
+      setIsLoading(true);
+      if (serviceId) {
+        await dispatch(updateService({ 
+          id: serviceId.toString(),
+          data 
+        })).unwrap();
       } else {
-        const newService = await withLoading(
-          () => servicesApi.create(serviceData),
-          'No se pudo crear el servicio'
-        );
-        if (newService) {
-          dispatch(addService(newService));
-          navigation.goBack();
-        }
+        await dispatch(createService(data)).unwrap();
       }
+      navigation.goBack();
     } catch (error) {
-      Alert.alert('Error', 'Hubo un error al guardar el servicio');
+      Alert.alert('Error', 'No se pudo guardar el servicio');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const renderCategoryModal = () => (
     <Modal
       visible={showCategoryModal}
-      transparent
       animationType="slide"
+      transparent={true}
       onRequestClose={() => setShowCategoryModal(false)}
     >
       <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Seleccionar Categoría</Text>
-            <TouchableOpacity
-              onPress={() => setShowCategoryModal(false)}
-            >
-              <Ionicons name="close" size={24} color={COLORS.text} />
-            </TouchableOpacity>
-          </View>
-          <ScrollView>
-            {CATEGORIAS_SERVICIOS.map(categoria => (
+          {CATEGORIAS_SERVICIOS.map(categoria => {
+            const categoriaId = Number(categoria.id);
+            const currentSelectedId = Number(selectedCategoria);
+            const isSelected = currentSelectedId === categoriaId;
+            
+            return (
               <TouchableOpacity
-                key={categoria.id}
+                key={categoriaId}
                 style={[
-                  styles.categoryItem,
-                  selectedCategoria === categoria.id && styles.selectedCategoryItem
+                  styles.categoryOption,
+                  isSelected && styles.selectedOption
                 ]}
                 onPress={() => {
-                  setValue('categoria', categoria.id);
+                  setSelectedCategoria(categoriaId);
+                  setValue('categoria_id', categoriaId);
                   setShowCategoryModal(false);
                 }}
               >
-                <View style={[styles.categoryColor, { backgroundColor: categoria.color }]} />
-                <Text style={styles.categoryName}>{categoria.nombre}</Text>
-                {selectedCategoria === categoria.id && (
-                  <Ionicons name="checkmark" size={24} color={COLORS.primary} />
-                )}
+                <View 
+                  style={[
+                    styles.categoryColor,
+                    { backgroundColor: categoria.color }
+                  ]} 
+                />
+                <Text style={styles.categoryText}>{categoria.nombre}</Text>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
+            );
+          })}
         </View>
       </View>
     </Modal>
   );
+  const getCategoriaName = (id: number) => {
+    const categoria = CATEGORIAS_SERVICIOS.find(cat => cat.id === id.toString());
+    return categoria ? categoria.nombre : '';
+  };
 
   return (
     <KeyboardAvoidingView 
@@ -176,7 +170,7 @@ const ServiceFormScreen: React.FC = () => {
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.title}>
-          {isEditing ? 'Editar Servicio' : 'Nuevo Servicio'}
+          {serviceId ? 'Editar Servicio' : 'Nuevo Servicio'}
         </Text>
       </View>
 
@@ -230,7 +224,7 @@ const ServiceFormScreen: React.FC = () => {
               render={({ field: { onChange, value } }) => (
                 <TextInput
                   style={styles.input}
-                  value={value}
+                  value={value.toString()}
                   onChangeText={onChange}
                   placeholder="Ej: 45min"
                   error={!!errors.duracion}
@@ -254,7 +248,7 @@ const ServiceFormScreen: React.FC = () => {
               render={({ field: { onChange, value } }) => (
                 <TextInput
                   style={styles.input}
-                  value={value}
+                  value={value.toString()}
                   onChangeText={onChange}
                   placeholder="0.00"
                   keyboardType="decimal-pad"
@@ -269,27 +263,32 @@ const ServiceFormScreen: React.FC = () => {
           <Text style={styles.label}>Categoría</Text>
           <Controller
             control={control}
-            name="categoria"
+            name="categoria_id"
             rules={{ required: 'Este campo es requerido' }}
-            render={({ field: { value } }) => (
-              <TouchableOpacity
-                style={styles.categorySelector}
-                onPress={() => setShowCategoryModal(true)}
-              >
-                <View style={styles.selectedCategory}>
-                  <View 
-                    style={[
-                      styles.categoryColor,
-                      { backgroundColor: CATEGORIAS_SERVICIOS.find(c => c.id === value)?.color }
-                    ]} 
-                  />
-                  <Text style={styles.categoryName}>
-                    {CATEGORIAS_SERVICIOS.find(c => c.id === value)?.nombre}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-down" size={24} color={COLORS.gray} />
-              </TouchableOpacity>
-            )}
+            render={({ field: { value, onChange } }) => {
+              const categoriaId = Number(value);
+              const categoria = CATEGORIAS_SERVICIOS.find(c => Number(c.id) === categoriaId);
+              
+              return (
+                <TouchableOpacity
+                  style={styles.categorySelector}
+                  onPress={() => setShowCategoryModal(true)}
+                >
+                  <View style={styles.selectedCategory}>
+                    <View 
+                      style={[
+                        styles.categoryColor,
+                        { backgroundColor: categoria?.color }
+                      ]} 
+                    />
+                    <Text style={styles.categoryName}>
+                      {categoria?.nombre || ''}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-down" size={24} color={COLORS.gray} />
+                </TouchableOpacity>
+              );
+            }}
           />
         </View>
 
@@ -316,7 +315,7 @@ const ServiceFormScreen: React.FC = () => {
           disabled={loading}
         >
           <Text style={styles.submitButtonText}>
-            {isEditing ? 'Actualizar' : 'Crear'} Servicio
+            {serviceId ? 'Actualizar' : 'Crear'} Servicio
           </Text>
         </TouchableOpacity>
       </View>
@@ -460,6 +459,21 @@ const styles = StyleSheet.create({
   selectedCategory: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  categoryOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  selectedOption: {
+    backgroundColor: COLORS.primary + '10',
+  },
+  categoryText: {
+    fontSize: 16,
+    color: COLORS.text,
+    flex: 1,
   },
 });
 

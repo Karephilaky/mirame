@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import apiClient from '../api/apiClient';
+import apiClient from '../services/api/api/apiClient';
 
 interface FetchResult<T> {
   data: T | null;
